@@ -271,6 +271,7 @@ main{max-width:1200px;margin:0 auto;padding:28px 20px}
       <button class="active" onclick="showTab('standings')">Standings</button>
       <button onclick="showTab('weekly')">Weekly Points</button>
       <button onclick="showTab('scores')">Scores</button>
+      <button onclick="showTab('teamscores')">Team Scores</button>
       <button onclick="showTab('dots')">Dots</button>
       <button onclick="showTab('hcp')">HCP Ref</button>
       <button onclick="showTab('hcptrack')">HCP Tracker</button>
@@ -291,6 +292,7 @@ main{max-width:1200px;margin:0 auto;padding:28px 20px}
   <button onclick="showTab('standings');closeNav()">⛳ Standings</button>
   <button onclick="showTab('weekly');closeNav()">📋 Weekly Points</button>
   <button onclick="showTab('scores');closeNav()">🏌️ Scores</button>
+  <button onclick="showTab('teamscores');closeNav()">🤝 Team Scores</button>
   <button onclick="showTab('dots');closeNav()">🎯 Dots</button>
   <button onclick="showTab('hcp');closeNav()">📊 HCP Reference</button>
   <button onclick="showTab('hcptrack');closeNav()">📈 HCP Tracker</button>
@@ -402,6 +404,60 @@ main{max-width:1200px;margin:0 auto;padding:28px 20px}
   <div class="card">
     <div class="card-title">Score History</div>
     <div style="overflow-x:auto"><table class="hist-tbl" id="sc-history"><thead></thead><tbody></tbody></table></div>
+  </div>
+</div>
+
+<!-- TEAM SCORES -->
+<div id="tab-teamscores" class="tab">
+  <div class="sec-title">Team Scores</div>
+  <div class="sec-sub">Best Ball · Best Ball Stableford · 4-Ball Match Play</div>
+  <div class="card">
+    <div class="week-sel">
+      <label>Week:</label>
+      <select id="ts-week-sel" onchange="onTeamWeekChange()"></select>
+      <span id="ts-week-info" style="font-size:13px;color:var(--muted)"></span>
+    </div>
+    <div id="ts-fmt-bar"></div>
+  </div>
+  <div id="ts-pairings-card" class="card">
+    <div class="card-title">🤝 Team Pairings</div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:14px">Auto-paired by standings · Override as needed</div>
+    <div id="ts-pairings"></div>
+    <div class="flex" style="margin-top:14px">
+      <button class="btn btn-primary" onclick="savePairings()">💾 Save Pairings</button>
+      <button class="btn btn-secondary" onclick="resetPairings()">↩ Reset to Auto</button>
+    </div>
+  </div>
+  <div id="ts-matches-card" class="card">
+    <div class="card-title" id="ts-matches-title">📋 Match Results</div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:14px" id="ts-matches-sub"></div>
+    <div id="ts-matches"></div>
+  </div>
+  <div class="card">
+    <div class="card-title">⭐ Week Bonuses</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+      <div>
+        <div style="font-size:12px;font-weight:700;color:var(--mid);text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px">📍 Closest to Pin (+1)</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <select id="ts-ctp-hole" class="sel" style="flex:1;min-width:70px" onchange="saveTeamBonus()"><option value="">Hole…</option></select>
+          <select id="ts-ctp-winner" class="sel" style="flex:2" onchange="saveTeamBonus()"><option value="">Winner…</option></select>
+        </div>
+      </div>
+      <div>
+        <div style="font-size:12px;font-weight:700;color:var(--mid);text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px">💨 Longest Drive (+1)</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <select id="ts-ld-hole" class="sel" style="flex:1;min-width:70px" onchange="saveTeamBonus()"><option value="">Hole…</option></select>
+          <select id="ts-ld-winner" class="sel" style="flex:2" onchange="saveTeamBonus()"><option value="">Winner…</option></select>
+        </div>
+      </div>
+    </div>
+    <div style="margin-top:16px">
+      <div style="font-size:12px;font-weight:700;color:var(--mid);text-transform:uppercase;letter-spacing:.4px;margin-bottom:10px">🐦 Birdies &amp; Eagles</div>
+      <div id="ts-birdie-eagle"></div>
+    </div>
+  </div>
+  <div class="flex" style="margin-bottom:24px">
+    <button class="btn btn-primary" onclick="saveTeamPoints()">💾 Save Points</button>
   </div>
 </div>
 
@@ -901,7 +957,7 @@ function checkAuth() {
 }
 
 function updateAuthUI() {
-  const editTabs = ['weekly','scores','dots','hcptrack','updatehi','settings'];
+  const editTabs = ['weekly','scores','teamscores','dots','hcptrack','updatehi','settings'];
   const authBtns = document.getElementById('auth-btn-area');
   if (isCommissioner) {
     authBtns.innerHTML = `<span style="font-size:12px;color:var(--gold-light);margin-right:4px">⚙️ Commissioner</span><button onclick="logout()" style="background:rgba(255,255,255,.15);border:none;color:#fff;font-size:12px;padding:4px 10px;border-radius:5px;cursor:pointer">Log out</button>`;
@@ -1151,6 +1207,7 @@ function showTab(id) {
   if (id==='standings') renderStandings();
   if (id==='weekly')  { populateSel('pts-week-sel', SCORE_WKS); renderWeekly(); renderPtsHistory(); }
   if (id==='scores')  { populateSel('sc-week-sel', SCHEDULE.map(s=>s.wk)); onScoreWeekChange(); renderScoreHistory(); }
+  if (id==='teamscores') { initTeamScoresTab(); }
   if (id==='dots')    { populateDotsSel(); renderDotsInputs(); renderDotsTable(); }
   if (id==='hcp')     { renderHcpTab(); }
   if (id==='hcptrack'){ initHcpTrackerSel(); renderHcpTracker(); }
@@ -1916,6 +1973,423 @@ function renderScoreHistory() {
   PLAYERS.forEach(p=>{ tbody+=`<td>—</td><td class="best">${bests[p]??'—'}</td>`; });
   tbody+='</tr>';
   tbl.tBodies[0]?tbl.tBodies[0].innerHTML=tbody:tbl.createTBody().innerHTML=tbody;
+}
+
+// ═══════════════════════════════════════
+// TEAM SCORES
+// ═══════════════════════════════════════
+const TEAM_WKS = SCHEDULE.filter(s => TEAM_FMTS.includes(s.format) || s.type === 'Team').map(s => s.wk);
+
+const getTeamData    = wk => load('team_' + wk, {pairings:[], results:{}, bonus:{ctp:{},ld:{}}, perPlayer:{}});
+const saveTeamData   = (wk,v) => save('team_' + wk, v);
+
+function onTeamWeekChange() {
+  PLAYERS = getPlayers();
+  const sel = document.getElementById('ts-week-sel');
+  const wk = Number(sel.value);
+  if (!wk) return;
+  const s = SCHEDULE.find(x => x.wk === wk);
+  const fmt = getEffectiveFmt(wk);
+  document.getElementById('ts-week-info').textContent = s ? `${fmt}` : '';
+  renderFmtBar('ts-fmt-bar', wk, 'renderTeamTab');
+  renderTeamTab();
+}
+
+function renderTeamTab() {
+  const wk = Number(document.getElementById('ts-week-sel').value);
+  if (!wk) return;
+  renderTeamPairings(wk);
+  renderTeamMatches(wk);
+  renderTeamBonuses(wk);
+}
+
+// ── Pairings ──
+function getAutoPairings(wk) {
+  // Pair by current standings: 1st+last, 2nd+2nd-last, etc.
+  const pts = getPts();
+  const scored = PLAYERS.map(p => ({
+    player: p,
+    season: H1_WKS.concat(H2_WKS).filter(w => w < wk).reduce((s,w) => s + (pts[w]?.[p] || pts[String(w)]?.[p] || 0), 0)
+  })).sort((a,b) => b.season - a.season);
+  const pairs = [];
+  const n = scored.length;
+  for (let i = 0; i < Math.floor(n/2); i++) {
+    const p1 = scored[i].player;
+    const p2 = scored[n-1-i].player;
+    pairs.push([p1, p2]);
+  }
+  // Group pairs into 2v2 matches
+  const matches = [];
+  for (let i = 0; i < pairs.length - 1; i += 2) {
+    matches.push({ team1: pairs[i], team2: pairs[i+1] });
+  }
+  // Odd pair out goes solo (shouldn't happen with 12 players but handle it)
+  if (pairs.length % 2 !== 0) matches.push({ team1: pairs[pairs.length-1], team2: [] });
+  return matches;
+}
+
+function renderTeamPairings(wk) {
+  PLAYERS = getPlayers();
+  const data = getTeamData(wk);
+  const matches = data.pairings.length ? data.pairings : getAutoPairings(wk);
+  const hcaps = getHandicaps();
+  const allPlayers = PLAYERS;
+  let html = '';
+  matches.forEach((m, mi) => {
+    html += `<div style="background:var(--cream);border-radius:10px;padding:14px 16px;margin-bottom:12px;border:1.5px solid #eee">
+      <div style="font-size:12px;font-weight:700;color:var(--mid);text-transform:uppercase;letter-spacing:.4px;margin-bottom:10px">Match ${mi+1}</div>
+      <div style="display:grid;grid-template-columns:1fr auto 1fr;gap:12px;align-items:center">
+        <div>
+          <div style="font-size:11px;font-weight:600;color:var(--muted);margin-bottom:6px">TEAM 1</div>
+          ${[0,1].map(pi => `<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+            <select class="sel" style="flex:1;font-size:13px" id="ts_t1_${mi}_${pi}" onchange="onPairingChange(${mi})">
+              <option value="">Player…</option>
+              ${allPlayers.map(p => `<option value="${p}" ${m.team1[pi]===p?'selected':''}>${p}</option>`).join('')}
+            </select>
+            <span style="font-size:11px;color:var(--muted);min-width:50px">HI: ${hcaps[m.team1[pi]]??'—'}</span>
+          </div>`).join('')}
+        </div>
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:24px;color:var(--gold);text-align:center">VS</div>
+        <div>
+          <div style="font-size:11px;font-weight:600;color:var(--muted);margin-bottom:6px">TEAM 2</div>
+          ${[0,1].map(pi => `<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+            <select class="sel" style="flex:1;font-size:13px" id="ts_t2_${mi}_${pi}" onchange="onPairingChange(${mi})">
+              <option value="">Player…</option>
+              ${allPlayers.map(p => `<option value="${p}" ${m.team2[pi]===p?'selected':''}>${p}</option>`).join('')}
+            </select>
+            <span style="font-size:11px;color:var(--muted);min-width:50px">HI: ${hcaps[m.team2[pi]]??'—'}</span>
+          </div>`).join('')}
+        </div>
+      </div>
+    </div>`;
+  });
+  document.getElementById('ts-pairings').innerHTML = html;
+}
+
+function onPairingChange(mi) {
+  // Live preview only — saved on Save Pairings
+}
+
+function savePairings() {
+  if (!requireAuth()) return;
+  const wk = Number(document.getElementById('ts-week-sel').value);
+  const data = getTeamData(wk);
+  const matches = [];
+  let mi = 0;
+  while (document.getElementById(`ts_t1_${mi}_0`)) {
+    matches.push({
+      team1: [document.getElementById(`ts_t1_${mi}_0`)?.value, document.getElementById(`ts_t1_${mi}_1`)?.value].filter(Boolean),
+      team2: [document.getElementById(`ts_t2_${mi}_0`)?.value, document.getElementById(`ts_t2_${mi}_1`)?.value].filter(Boolean)
+    });
+    mi++;
+  }
+  data.pairings = matches;
+  saveTeamData(wk, data);
+  renderTeamMatches(wk);
+  toast('✅ Pairings saved');
+}
+
+function resetPairings() {
+  const wk = Number(document.getElementById('ts-week-sel').value);
+  const data = getTeamData(wk);
+  data.pairings = [];
+  saveTeamData(wk, data);
+  renderTeamTab();
+  toast('↩ Pairings reset to auto');
+}
+
+// ── Matches ──
+function renderTeamMatches(wk) {
+  const fmt = getEffectiveFmt(wk);
+  const isMP  = fmt.toLowerCase().includes('match play');
+  const isSF  = fmt.toLowerCase().includes('stableford');
+  const data  = getTeamData(wk);
+  const matches = data.pairings.length ? data.pairings : getAutoPairings(wk);
+  const hcaps = getHandicaps();
+  document.getElementById('ts-matches-title').textContent = isMP ? '⚔️ Match Play Results' : isSF ? '🏆 Best Ball Stableford' : '🏆 Best Ball Results';
+  document.getElementById('ts-matches-sub').textContent = isMP
+    ? 'Enter final match result per pairing · All players play off lowest HCP in group'
+    : 'Enter individual gross scores · App calculates best ball team total';
+
+  let html = '';
+  matches.forEach((m, mi) => {
+    const allFour = [...(m.team1||[]), ...(m.team2||[])].filter(Boolean);
+    const hcpVals = allFour.map(p => hcaps[p] ?? HCP_DATA.find(h=>h.name===p)?.hi ?? 99);
+    const minHCP  = Math.min(...hcpVals);
+    if (isMP) {
+      const res = data.results?.[mi] || '';
+      html += `<div style="background:var(--cream);border-radius:10px;padding:14px 16px;margin-bottom:12px;border:1.5px solid #eee">
+        <div style="font-size:12px;font-weight:700;color:var(--mid);text-transform:uppercase;letter-spacing:.4px;margin-bottom:10px">
+          Match ${mi+1} · Low HCP: ${minHCP} (${allFour[hcpVals.indexOf(minHCP)] || '—'})
+        </div>
+        <div style="display:grid;grid-template-columns:1fr auto 1fr;gap:12px;align-items:center;margin-bottom:12px">
+          <div style="font-weight:700">${(m.team1||[]).join(' &amp; ') || '—'}</div>
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:24px;color:var(--gold);text-align:center">VS</div>
+          <div style="font-weight:700;text-align:right">${(m.team2||[]).join(' &amp; ') || '—'}</div>
+        </div>
+        <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap">
+          <button class="res-btn ${res==='team1'?'win':''}" onclick="setMatchResult(${mi},'team1',${wk})">Team 1 Wins (+6)</button>
+          <button class="res-btn ${res==='tie'?'win':''}" onclick="setMatchResult(${mi},'tie',${wk})" style="${res==='tie'?'background:#e8f5e9;border-color:var(--green);color:var(--green)':''}">Halve (+4)</button>
+          <button class="res-btn ${res==='team2'?'win':''}" onclick="setMatchResult(${mi},'team2',${wk})">Team 2 Wins (+6)</button>
+          <button class="res-btn" onclick="setMatchResult(${mi},'',${wk})" style="font-size:11px">Clear</button>
+        </div>
+        ${res ? `<div style="margin-top:10px;text-align:center;font-size:13px;color:var(--green);font-weight:600">${getMatchSummary(m, res)}</div>` : ''}
+      </div>`;
+    } else {
+      // Best Ball — per-hole score entry
+      const nine = data.nine || 'front';
+      const holeIdxs = getHolesForNine(nine);
+      html += renderBestBallMatch(m, mi, wk, holeIdxs, isSF, hcaps, data);
+    }
+  });
+  document.getElementById('ts-matches').innerHTML = html;
+}
+
+function getMatchSummary(match, result) {
+  if (result === 'tie') return `Halve — both teams get 4 pts each`;
+  const winners = result === 'team1' ? match.team1 : match.team2;
+  const losers  = result === 'team1' ? match.team2 : match.team1;
+  return `${(winners||[]).join(' &amp; ')} win (+6 each) · ${(losers||[]).join(' &amp; ')} get +2 each`;
+}
+
+function setMatchResult(mi, result, wk) {
+  if (!requireAuth()) return;
+  const data = getTeamData(wk);
+  if (!data.results) data.results = {};
+  data.results[mi] = result;
+  saveTeamData(wk, data);
+  renderTeamMatches(wk);
+}
+
+function renderBestBallMatch(m, mi, wk, holeIdxs, isSF, hcaps, data) {
+  const allFour = [...(m.team1||[]), ...(m.team2||[])].filter(Boolean);
+  const scores  = data.scores || {};
+  const nine    = data.nine || 'front';
+
+  let html = `<div style="background:var(--cream);border-radius:10px;padding:14px 16px;margin-bottom:12px;border:1.5px solid #eee">
+    <div style="font-size:12px;font-weight:700;color:var(--mid);text-transform:uppercase;letter-spacing:.4px;margin-bottom:12px">Match ${mi+1}</div>`;
+
+  // Score entry per team
+  ['team1','team2'].forEach((tk, ti) => {
+    const team = m[tk] || [];
+    if (!team.length) return;
+    html += `<div style="margin-bottom:16px">
+      <div style="font-size:12px;font-weight:700;color:var(--fairway);margin-bottom:8px">TEAM ${ti+1}: ${team.join(' &amp; ')}</div>
+      <div style="overflow-x:auto"><table class="hole-tbl" style="font-size:12px">
+        <thead><tr><th>Player</th>${holeIdxs.map(i=>`<th>${i+1}</th>`).join('')}<th class="tot-col">TOT</th></tr></thead>
+        <tbody>`;
+    team.forEach(p => {
+      const pid = p.replace(/\W/g,'_');
+      const st  = getStrokesFor(p);
+      const saved = scores[p]?.holes || {};
+      let gtot = 0, gcnt = 0;
+      const cells = holeIdxs.map(i => {
+        const v = saved[i] ?? saved[String(i)];
+        const gv = v !== undefined ? v : '';
+        if (gv !== '') { gtot += Number(gv); gcnt++; }
+        return `<td><input class="g-input" type="number" min="1" max="20"
+          id="ts_g_${mi}_${tk}_${pid}_${i}" value="${gv}"
+          oninput="onTeamGross(${mi},'${tk}','${pid}','${p.replace(/'/g,"\\'")}',${i},${wk})"
+          placeholder="—" style="width:36px;font-size:12px;padding:3px 1px"></td>`;
+      }).join('');
+      html += `<tr><td style="font-weight:600;white-space:nowrap;padding-left:12px">${p}</td>${cells}<td class="tot-col" id="ts_tot_${mi}_${tk}_${pid}">${gcnt>0?gtot:'—'}</td></tr>`;
+    });
+    // Best ball row
+    const bbCells = holeIdxs.map(i => {
+      const bbVal = getBestBallHole(team, scores, i, isSF, data);
+      return `<td id="ts_bb_${mi}_${tk}_${i}" style="font-weight:700;color:var(--green);background:#f0faf3">${bbVal??'—'}</td>`;
+    }).join('');
+    const bbTot = getBestBallTotal(team, scores, holeIdxs, isSF, data);
+    html += `<tr style="background:#f0faf3"><td style="font-weight:700;color:var(--green);padding-left:12px">Best Ball</td>${bbCells}<td class="tot-col" id="ts_bbtot_${mi}_${tk}" style="color:var(--green);font-weight:700">${bbTot??'—'}</td></tr>`;
+    html += `</tbody></table></div></div>`;
+  });
+
+  // Result
+  const res = data.results?.[mi];
+  const t1tot = getBestBallTotal(m.team1||[], scores, holeIdxs, isSF, data);
+  const t2tot = getBestBallTotal(m.team2||[], scores, holeIdxs, isSF, data);
+  const autoRes = t1tot != null && t2tot != null
+    ? (isSF ? (t1tot>t2tot?'team1':t2tot>t1tot?'team2':'tie') : (t1tot<t2tot?'team1':t2tot<t1tot?'team2':'tie'))
+    : null;
+  const displayRes = res || autoRes;
+  if (displayRes) {
+    html += `<div style="padding:10px;background:#fff;border-radius:8px;text-align:center;font-size:13px;font-weight:600;color:var(--green)">${getMatchSummary(m, displayRes)}</div>`;
+  }
+  html += `<div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:10px">
+    <button class="res-btn ${displayRes==='team1'?'win':''}" onclick="setMatchResult(${mi},'team1',${wk})">Team 1 Wins</button>
+    <button class="res-btn ${displayRes==='tie'?'win':''}" onclick="setMatchResult(${mi},'tie',${wk})">Tie</button>
+    <button class="res-btn ${displayRes==='team2'?'win':''}" onclick="setMatchResult(${mi},'team2',${wk})">Team 2 Wins</button>
+    <button class="res-btn" onclick="setMatchResult(${mi},'',${wk})" style="font-size:11px">Clear</button>
+  </div></div>`;
+  return html;
+}
+
+function getBestBallHole(team, scores, i, isSF, data) {
+  const vals = team.map(p => {
+    const st = getStrokesFor(p);
+    const saved = scores[p]?.holes || {};
+    const g = saved[i] ?? saved[String(i)];
+    if (g === undefined) return null;
+    if (isSF) {
+      const {net} = calcNet(Number(g), COURSE.par[i], st[i]);
+      return calcStablefordPts(net, COURSE.par[i]);
+    }
+    return calcNet(Number(g), COURSE.par[i], st[i]).net;
+  }).filter(v => v !== null);
+  if (!vals.length) return null;
+  return isSF ? Math.max(...vals) : Math.min(...vals);
+}
+
+function getBestBallTotal(team, scores, holeIdxs, isSF, data) {
+  const vals = holeIdxs.map(i => getBestBallHole(team, scores, i, isSF, data));
+  if (vals.every(v => v === null)) return null;
+  return vals.reduce((s, v) => s + (v ?? 0), 0);
+}
+
+function onTeamGross(mi, tk, pid, playerName, hIdx, wk) {
+  const el = document.getElementById(`ts_g_${mi}_${tk}_${pid}_${hIdx}`);
+  if (!el) return;
+  const data = getTeamData(wk);
+  if (!data.scores) data.scores = {};
+  if (!data.scores[playerName]) data.scores[playerName] = {holes:{}};
+  if (el.value !== '') {
+    data.scores[playerName].holes[hIdx] = Number(el.value);
+  } else {
+    delete data.scores[playerName].holes[hIdx];
+  }
+  // Update gross total for this player
+  const holeIdxs = getHolesForNine(data.nine || 'front');
+  let gtot = 0, gcnt = 0;
+  holeIdxs.forEach(i => {
+    const v = data.scores[playerName]?.holes[i] ?? data.scores[playerName]?.holes[String(i)];
+    if (v !== undefined) { gtot += v; gcnt++; }
+  });
+  const totEl = document.getElementById(`ts_tot_${mi}_${tk}_${pid}`);
+  if (totEl) totEl.textContent = gcnt > 0 ? gtot : '—';
+  // Update best ball row
+  const fmt = getEffectiveFmt(wk);
+  const isSF = fmt.toLowerCase().includes('stableford');
+  const hcaps = getHandicaps();
+  const match = (data.pairings.length ? data.pairings : getAutoPairings(wk))[mi];
+  const team = match?.[tk] || [];
+  holeIdxs.forEach(i => {
+    const bbEl = document.getElementById(`ts_bb_${mi}_${tk}_${i}`);
+    if (bbEl) { const v = getBestBallHole(team, data.scores, i, isSF, data); bbEl.textContent = v ?? '—'; }
+  });
+  const bbtotEl = document.getElementById(`ts_bbtot_${mi}_${tk}`);
+  if (bbtotEl) { const v = getBestBallTotal(team, data.scores, holeIdxs, isSF, data); bbtotEl.textContent = v ?? '—'; }
+  saveTeamData(wk, data);
+}
+
+// ── Bonuses ──
+function renderTeamBonuses(wk) {
+  const holeIdxs = getHolesForNine('front'); // use front for CtP/LD
+  const par3s = holeIdxs.filter(i => COURSE.par[i] === 3).map(i => i+1);
+  const par5s = holeIdxs.filter(i => COURSE.par[i] === 5).map(i => i+1);
+  const data  = getTeamData(wk);
+  const bon   = data.bonus || {};
+  const pOpts = '<option value="">Winner…</option>' + PLAYERS.map(p => `<option value="${p}">${p}</option>`).join('');
+  const ctpH = document.getElementById('ts-ctp-hole');
+  if (ctpH) { ctpH.innerHTML = '<option value="">Hole…</option>' + par3s.map(h => `<option value="${h}"${bon.ctp?.hole==h?' selected':''}>${h} (par 3)</option>`).join(''); }
+  const ctpW = document.getElementById('ts-ctp-winner');
+  if (ctpW) { ctpW.innerHTML = pOpts; ctpW.value = bon.ctp?.player || ''; }
+  const ldH = document.getElementById('ts-ld-hole');
+  if (ldH) { ldH.innerHTML = '<option value="">Hole…</option>' + par5s.map(h => `<option value="${h}"${bon.ld?.hole==h?' selected':''}>${h} (par 5)</option>`).join(''); }
+  const ldW = document.getElementById('ts-ld-winner');
+  if (ldW) { ldW.innerHTML = pOpts; ldW.value = bon.ld?.player || ''; }
+  // Birdie/Eagle counters
+  const pp = data.perPlayer || {};
+  document.getElementById('ts-birdie-eagle').innerHTML = `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px">
+    ${PLAYERS.map(p => {
+      const pid = p.replace(/\W/g,'_');
+      const b = pp[p]?.birdies || 0;
+      const e = pp[p]?.eagles  || 0;
+      return `<div style="background:var(--cream);border-radius:8px;padding:8px 12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <span style="font-size:13px;font-weight:600;flex:1;min-width:80px">${p}</span>
+        <div class="be-grp">
+          <span style="font-size:12px">🐦</span>
+          <button class="cnt-btn" onclick="adjTeamBonus('${pid}','birdies',-1,${wk},'${p.replace(/'/g,"\\'")}')">−</button>
+          <span class="cnt-val" id="ts_b_${pid}">${b}</span>
+          <button class="cnt-btn" onclick="adjTeamBonus('${pid}','birdies',1,${wk},'${p.replace(/'/g,"\\'")}')">+</button>
+        </div>
+        <div class="be-grp">
+          <span style="font-size:12px">🦅</span>
+          <button class="cnt-btn" onclick="adjTeamBonus('${pid}','eagles',-1,${wk},'${p.replace(/'/g,"\\'")}')">−</button>
+          <span class="cnt-val" id="ts_e_${pid}">${e}</span>
+          <button class="cnt-btn" onclick="adjTeamBonus('${pid}','eagles',1,${wk},'${p.replace(/'/g,"\\'")}')">+</button>
+        </div>
+      </div>`;
+    }).join('')}
+  </div>`;
+}
+
+function saveTeamBonus() {
+  const wk = Number(document.getElementById('ts-week-sel').value);
+  const data = getTeamData(wk);
+  data.bonus = {
+    ctp: {hole: document.getElementById('ts-ctp-hole').value, player: document.getElementById('ts-ctp-winner').value},
+    ld:  {hole: document.getElementById('ts-ld-hole').value,  player: document.getElementById('ts-ld-winner').value}
+  };
+  saveTeamData(wk, data);
+}
+
+function adjTeamBonus(pid, type, delta, wk, playerName) {
+  const data = getTeamData(wk);
+  if (!data.perPlayer) data.perPlayer = {};
+  if (!data.perPlayer[playerName]) data.perPlayer[playerName] = {birdies:0, eagles:0};
+  data.perPlayer[playerName][type] = Math.max(0, (data.perPlayer[playerName][type]||0) + delta);
+  saveTeamData(wk, data);
+  const el = document.getElementById(`ts_${type==='birdies'?'b':'e'}_${pid}`);
+  if (el) el.textContent = data.perPlayer[playerName][type];
+}
+
+// ── Save Points ──
+function saveTeamPoints() {
+  if (!requireAuth()) return;
+  const wk = Number(document.getElementById('ts-week-sel').value);
+  const data = getTeamData(wk);
+  const matches = data.pairings.length ? data.pairings : getAutoPairings(wk);
+  const bon = data.bonus || {};
+  const pp  = data.perPlayer || {};
+  const pts = getPts();
+  if (!pts[wk]) pts[wk] = {};
+  // Clear existing week
+  pts[wk] = {};
+  matches.forEach((m, mi) => {
+    const res = data.results?.[mi];
+    if (!res) return;
+    const t1Win = res === 'team1', t2Win = res === 'team2', tie = res === 'tie';
+    const t1Pts = t1Win ? 6 : tie ? 4 : 2;
+    const t2Pts = t2Win ? 6 : tie ? 4 : 2;
+    (m.team1||[]).forEach(p => { if (p) pts[wk][p] = (pts[wk][p]||0) + t1Pts; });
+    (m.team2||[]).forEach(p => { if (p) pts[wk][p] = (pts[wk][p]||0) + t2Pts; });
+  });
+  // Add bonus points
+  PLAYERS.forEach(p => {
+    const birdies = pp[p]?.birdies || 0;
+    const eagles  = pp[p]?.eagles  || 0;
+    const ctp = bon.ctp?.player === p ? 1 : 0;
+    const ld  = bon.ld?.player  === p ? 1 : 0;
+    const bonus = birdies + eagles*2 + ctp + ld;
+    if (bonus > 0) pts[wk][p] = (pts[wk][p]||0) + bonus;
+  });
+  if (Object.keys(pts[wk]).length === 0) delete pts[wk];
+  savePts(pts);
+  toast('✅ Team points saved for Week ' + wk);
+}
+
+// ── Tab init ──
+function initTeamScoresTab() {
+  PLAYERS = getPlayers();
+  const sel = document.getElementById('ts-week-sel');
+  if (!sel.options.length) {
+    TEAM_WKS.forEach(w => {
+      const s = SCHEDULE.find(x => x.wk === w);
+      sel.add(new Option(`Wk ${w} — ${s.date} (${s.format})`, w));
+    });
+  }
+  if (sel.options.length && !sel.value) sel.value = sel.options[0].value;
+  onTeamWeekChange();
 }
 
 // ═══════════════════════════════════════
