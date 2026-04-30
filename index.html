@@ -4250,6 +4250,20 @@ function toast(msg) {
 const getBookie   = () => load('bookie', {entries:[]});
 const saveBookie  = v  => save('bookie', v);
 
+let BK_HIST_SORT = {col: null, dir: 'desc'};
+let BK_MAT_SORT  = {col: null, dir: 'desc'};
+
+function bkSortHist(col) {
+  if (BK_HIST_SORT.col === col) BK_HIST_SORT.dir = BK_HIST_SORT.dir === 'asc' ? 'desc' : 'asc';
+  else { BK_HIST_SORT.col = col; BK_HIST_SORT.dir = col === 'amt' ? 'desc' : 'asc'; }
+  renderBookie();
+}
+function bkSortMat(col) {
+  if (BK_MAT_SORT.col === col) BK_MAT_SORT.dir = BK_MAT_SORT.dir === 'asc' ? 'desc' : 'asc';
+  else { BK_MAT_SORT.col = col; BK_MAT_SORT.dir = 'desc'; }
+  renderBookie();
+}
+
 function renderBookie() {
   const data    = getBookie();
   const entries = data.entries || [];
@@ -4260,7 +4274,6 @@ function renderBookie() {
   if (addBtn) addBtn.style.display = isCommissioner ? '' : 'none';
 
   // ── Debt matrix from unsettled entries ──
-  // owes[fromPlayer][toPlayer] = total amount
   const owes = {};
   entries.filter(e => !e.settled).forEach(e => {
     const froms = Array.isArray(e.from) ? e.from : [e.from];
@@ -4281,16 +4294,32 @@ function renderBookie() {
   if (cols.length === 0) {
     matrixEl.innerHTML = '<span style="color:var(--muted);font-size:13px">No outstanding debts</span>';
   } else {
-    const thStyle = 'padding:6px 10px;font-size:11px;font-weight:700;color:var(--mid);text-transform:uppercase;letter-spacing:.4px;white-space:nowrap';
-    const tdBase  = 'padding:7px 10px;text-align:center;font-size:13px;border-bottom:1px solid #f0f0f0';
+    const arrow = (key) => BK_MAT_SORT.col === key ? (BK_MAT_SORT.dir === 'asc' ? ' ▲' : ' ▼') : '';
+    const thStyle = 'padding:6px 10px;font-size:11px;font-weight:700;color:var(--mid);text-transform:uppercase;letter-spacing:.4px;white-space:nowrap;cursor:pointer;user-select:none';
+
+    // Sort rows
+    let rows = cols.filter(r => cols.reduce((s, c) => s + (owes[r]?.[c] || 0), 0) > 0);
+    if (BK_MAT_SORT.col === 'total') {
+      rows.sort((a, b) => {
+        const ta = cols.reduce((s, c) => s + (owes[a]?.[c] || 0), 0);
+        const tb = cols.reduce((s, c) => s + (owes[b]?.[c] || 0), 0);
+        return BK_MAT_SORT.dir === 'asc' ? ta - tb : tb - ta;
+      });
+    } else if (BK_MAT_SORT.col) {
+      rows.sort((a, b) => {
+        const va = owes[a]?.[BK_MAT_SORT.col] || 0;
+        const vb = owes[b]?.[BK_MAT_SORT.col] || 0;
+        return BK_MAT_SORT.dir === 'asc' ? va - vb : vb - va;
+      });
+    }
+
+    const tdBase = 'padding:7px 10px;text-align:center;font-size:13px;border-bottom:1px solid #f0f0f0';
     let html = `<table style="width:100%;border-collapse:collapse;font-size:13px">
       <thead><tr style="border-bottom:2px solid #eee">
-        <th style="${thStyle}">Owes ↓ / Wins →</th>
-        ${cols.map(p => `<th style="${thStyle}">${p.split(' ')[0]}</th>`).join('')}
+        <th onclick="bkSortMat('total')" style="${thStyle}">Owes ↓ / Wins →${arrow('total')}</th>
+        ${cols.map(p => `<th onclick="bkSortMat('${p}')" style="${thStyle}">${p.split(' ')[0]}${arrow(p)}</th>`).join('')}
       </tr></thead><tbody>`;
-    cols.forEach(r => {
-      const rowTotal = cols.reduce((s, c) => s + (owes[r]?.[c] || 0), 0);
-      if (rowTotal === 0) return;
+    rows.forEach(r => {
       html += `<tr>
         <td style="padding:7px 10px;font-weight:700;font-size:13px;border-bottom:1px solid #f0f0f0;white-space:nowrap">${r.split(' ')[0]}</td>
         ${cols.map(c => {
@@ -4314,15 +4343,39 @@ function renderBookie() {
     return;
   }
 
-  const sorted = [...visible].sort((a,b) => (b.ts||0) - (a.ts||0));
+  // Sort history
+  const histComparators = {
+    from:   (a,b) => { const fa = Array.isArray(a.from)?a.from[0]:a.from; const fb = Array.isArray(b.from)?b.from[0]:b.from; return fa.localeCompare(fb); },
+    to:     (a,b) => a.to.localeCompare(b.to),
+    amt:    (a,b) => Number(a.amountEach||a.amount||0) - Number(b.amountEach||b.amount||0),
+    reason: (a,b) => (a.reason||'').localeCompare(b.reason||''),
+    wk:     (a,b) => (a.week||0) - (b.week||0),
+    status: (a,b) => (a.settled?1:0) - (b.settled?1:0),
+  };
+  let sorted = [...visible];
+  if (BK_HIST_SORT.col && histComparators[BK_HIST_SORT.col]) {
+    sorted.sort((a, b) => {
+      const v = histComparators[BK_HIST_SORT.col](a, b);
+      return BK_HIST_SORT.dir === 'asc' ? v : -v;
+    });
+  } else {
+    sorted.sort((a,b) => (b.ts||0) - (a.ts||0));
+  }
+
+  const ha = (col, label, align='left') => {
+    const active = BK_HIST_SORT.col === col;
+    const arr = active ? (BK_HIST_SORT.dir === 'asc' ? ' ▲' : ' ▼') : '';
+    return `<th onclick="bkSortHist('${col}')" style="text-align:${align};padding:6px 8px;color:var(--mid);font-size:11px;text-transform:uppercase;letter-spacing:.4px;cursor:pointer;user-select:none${active?';color:var(--fairway)':''}">${label}${arr}</th>`;
+  };
+
   ledEl.innerHTML = `<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px">
     <thead><tr style="border-bottom:2px solid #eee">
-      <th style="text-align:left;padding:6px 8px;color:var(--mid);font-size:11px;text-transform:uppercase;letter-spacing:.4px">From</th>
-      <th style="text-align:left;padding:6px 8px;color:var(--mid);font-size:11px;text-transform:uppercase;letter-spacing:.4px">To</th>
-      <th style="text-align:right;padding:6px 8px;color:var(--mid);font-size:11px;text-transform:uppercase;letter-spacing:.4px">Amt</th>
-      <th style="text-align:left;padding:6px 8px;color:var(--mid);font-size:11px;text-transform:uppercase;letter-spacing:.4px">Reason</th>
-      <th style="text-align:center;padding:6px 8px;color:var(--mid);font-size:11px;text-transform:uppercase;letter-spacing:.4px">Wk</th>
-      <th style="text-align:center;padding:6px 8px;color:var(--mid);font-size:11px;text-transform:uppercase;letter-spacing:.4px">Status</th>
+      ${ha('from','From')}
+      ${ha('to','To')}
+      ${ha('amt','Amt','right')}
+      ${ha('reason','Reason')}
+      ${ha('wk','Wk','center')}
+      ${ha('status','Status','center')}
       ${isCommissioner ? '<th style="padding:6px 4px"></th>' : ''}
     </tr></thead>
     <tbody>
