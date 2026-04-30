@@ -4317,7 +4317,7 @@ function renderBookie() {
     let html = `<table style="width:100%;border-collapse:collapse;font-size:13px">
       <thead><tr style="border-bottom:2px solid #eee">
         <th onclick="bkSortMat('total')" style="${thStyle}">Owes ↓ / Wins →${arrow('total')}</th>
-        ${cols.map(p => `<th onclick="bkSortMat('${p}')" style="${thStyle}">${p.split(' ')[0]}${arrow(p)}</th>`).join('')}
+        ${cols.map(p => `<th onclick="bkSortMat('${p.replace(/'/g,"\\'")}')" style="${thStyle}">${p.split(' ')[0]}${arrow(p)}</th>`).join('')}
       </tr></thead><tbody>`;
     rows.forEach(r => {
       html += `<tr>
