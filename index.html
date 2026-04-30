@@ -2766,6 +2766,8 @@ function setMatchResult(mi, result, wk) {
     const match = (data.pairings||[])[mi];
     const players = [...(match?.team1||[]), ...(match?.team2||[])];
     if (data.scores) players.forEach(p => { if (p) delete data.scores[p]; });
+    // Also clear any buffered scores for these players
+    if (GROSS_BUFFER[wk]) players.forEach(p => { if (p) delete GROSS_BUFFER[wk][p]; });
   } else {
     data.results[String(mi)] = result;
     if (data.clearedResults) delete data.clearedResults[String(mi)];
