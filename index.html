@@ -114,6 +114,8 @@ main{max-width:1200px;margin:0 auto;padding:28px 20px}
 .hist-tbl tbody tr:active td{background:#d8f3dc !important}
 .prev-tbl tbody tr:hover td{background:#f0faf3 !important;cursor:default}
 .prev-tbl tbody tr:active td{background:#d8f3dc !important}
+.bk-tbl tbody tr:hover td{background:#f0faf3 !important;cursor:default}
+.bk-tbl tbody tr:active td{background:#d8f3dc !important}
 .rank{display:inline-flex;align-items:center;justify-content:center;min-width:24px;height:24px;border-radius:50%;font-size:12px;font-weight:700;background:var(--sand);color:var(--mid);padding:0 4px}
 .rank.r1{background:var(--gold);color:var(--fairway)}
 .rank.r2{background:#c0c0c0;color:#333}
@@ -4348,7 +4350,7 @@ function renderBookie() {
     const tdBase  = 'padding:7px 10px;text-align:center;font-size:13px;border-bottom:1px solid #f0f0f0';
     const tdLeft  = 'padding:7px 10px;text-align:left;font-weight:700;font-size:13px;border-bottom:1px solid #f0f0f0;white-space:nowrap';
     const tdRight = 'padding:7px 10px;text-align:right;font-weight:700;font-size:13px;border-bottom:1px solid #f0f0f0';
-    let html = `<table style="width:100%;border-collapse:collapse;font-size:13px">
+    let html = `<table class="bk-tbl" style="width:100%;border-collapse:collapse;font-size:13px">
       <thead><tr style="border-bottom:2px solid #eee">
         <th onclick="bkSortMat('_name')" style="${thLeft}">Owes ↓ / Wins →${arrow('_name')}</th>
         ${cols.map(p => `<th onclick="bkSortMat('${p.replace(/'/g,"\\'")}')" style="${thCtr}">${p.split(' ')[0]}${arrow(p)}</th>`).join('')}
@@ -4405,7 +4407,7 @@ function renderBookie() {
     return `<th onclick="bkSortHist('${col}')" style="text-align:${align};padding:6px 8px;color:var(--mid);font-size:11px;text-transform:uppercase;letter-spacing:.4px;cursor:pointer;user-select:none${active?';color:var(--fairway)':''}">${label}${arr}</th>`;
   };
 
-  ledEl.innerHTML = `<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px">
+  ledEl.innerHTML = `<div style="overflow-x:auto"><table class="bk-tbl" style="width:100%;border-collapse:collapse;font-size:13px">
     <thead><tr style="border-bottom:2px solid #eee">
       ${ha('from','From')}
       ${ha('to','To')}
