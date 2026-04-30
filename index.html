@@ -2996,7 +2996,7 @@ function tsGrossKeydown(e, mi, tk, pid, hIdx, totalHoles, firstHoleIdx) {
     if (candidate >= 1 && candidate <= 20) {
       el.value = String(candidate);
       el.dispatchEvent(new Event('input'));
-      // score starts with 1 (10-19) — no auto-advance
+      tsAdvance(); // 2-digit entry complete — always advance
     } else {
       el.value = digit; // invalid combo — start fresh
       el.dispatchEvent(new Event('input'));
@@ -3053,7 +3053,7 @@ function indGrossKeydown(e, pid, hIdx, totalHoles, firstHoleIdx) {
     if (candidate >= 1 && candidate <= 20) {
       el.value = String(candidate);
       el.dispatchEvent(new Event('input'));
-      // score starts with 1 (10-19) — no auto-advance
+      indAdvance(); // 2-digit entry complete — always advance
     } else {
       el.value = digit;
       el.dispatchEvent(new Event('input'));
