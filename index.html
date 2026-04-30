@@ -2324,33 +2324,65 @@ function clearScores() {
 function renderScoreHistory() {
   const allScores = getScores();
   const tbl = document.getElementById('sc-history');
+
+  // Build merged view: team-format weeks pull directly from team data so history
+  // shows results even if saveTeamPoints hasn't been re-run since the fix.
+  const merged = {};
+  SCHEDULE.forEach(s => {
+    const wk = s.wk;
+    merged[wk] = {...(allScores[wk] || allScores[String(wk)] || {})};
+    if (TEAM_FMTS.includes(getEffectiveFmt(wk))) {
+      const td    = getTeamData(wk);
+      const nine  = td.nine || 'front';
+      const idxs  = getHolesForNine(nine);
+      Object.keys(td.scores || {}).forEach(p => {
+        if (merged[wk][p]?.gross != null) return; // already have posted summary
+        const saved = td.scores[p]?.holes || {};
+        const hi    = td.scores[p]?.hiSnapshot ?? (load('hcaps',{})[p] ?? null);
+        const st    = getStrokesFor(p, hi != null ? Number(hi) : null);
+        let gross = 0, net = 0, cnt = 0;
+        idxs.forEach(i => {
+          const v = saved[i] ?? saved[String(i)];
+          if (v !== undefined && v !== '') { gross += Number(v); net += calcNet(Number(v), COURSE.par[i], st[i]).net; cnt++; }
+        });
+        if (cnt > 0) merged[wk][p] = { gross, net, nine, hiSnapshot: hi };
+      });
+    }
+  });
+
   const bests = {};
-  PLAYERS.forEach(p=>{ let m=null; Object.values(allScores).forEach(wk=>{ if(wk[p]?.net!=null&&(m===null||wk[p].net<m))m=wk[p].net; }); bests[p]=m; });
+  PLAYERS.forEach(p => {
+    let m = null;
+    Object.values(merged).forEach(wkData => { if (wkData[p]?.net != null && (m === null || wkData[p].net < m)) m = wkData[p].net; });
+    bests[p] = m;
+  });
+
   let thead = '<tr><th>Wk</th><th>Date</th><th>Nine</th><th>Format</th>';
   PLAYERS.forEach(p=>thead+=`<th colspan="2">${p.split(' ')[0]}</th>`);
   thead += '</tr><tr><th></th><th></th><th></th><th></th>';
   PLAYERS.forEach(()=>thead+='<th>Gross</th><th>Net</th>');
   thead += '</tr>';
   tbl.tHead.innerHTML = thead;
+
   let tbody = '';
-  const wksWithData = SCHEDULE.filter(s=>allScores[s.wk]&&Object.keys(allScores[s.wk]).length>0);
-  if (!wksWithData.length) { tbody='<tr><td colspan="100" class="empty">No scores entered yet.</td></tr>'; }
+  const wksWithData = SCHEDULE.filter(s => Object.keys(merged[s.wk] || {}).length > 0);
+  if (!wksWithData.length) { tbody = '<tr><td colspan="100" class="empty">No scores entered yet.</td></tr>'; }
   else {
-    SCHEDULE.forEach(s=>{
-      const wkData = allScores[s.wk];
-      if (!wkData||!Object.keys(wkData).length) return;
-      const fmt=getEffectiveFmt(s.wk); const ovr=isOverridden(s.wk);
-      const nine=Object.values(wkData).find(d=>d?.nine)?.nine||'—';
-      const nineL=nine==='front'?'F9':nine==='back'?'B9':nine==='18'?'18':'—';
-      tbody+=`<tr class="${s.phase==='practice'?'prac':''}"><td><b>Wk ${s.wk}</b></td><td>${s.date}</td><td>${nineL}</td><td>${fmt}${ovr?' <span class="ovr-badge">🔀</span>':''}</td>`;
-      PLAYERS.forEach(p=>{ const d=wkData?.[p]; const isBest=d?.net!=null&&d.net===bests[p]; tbody+=`<td>${d?.gross??'—'}</td><td class="${isBest?'best':''}">${d?.net??'—'}${isBest?' ⭐':''}</td>`; });
-      tbody+='</tr>';
+    SCHEDULE.forEach(s => {
+      const wkData = merged[s.wk];
+      if (!wkData || !Object.keys(wkData).length) return;
+      const fmt = getEffectiveFmt(s.wk); const ovr = isOverridden(s.wk);
+      const nine = Object.values(wkData).find(d => d?.nine)?.nine || '—';
+      const nineL = nine==='front'?'F9':nine==='back'?'B9':nine==='18'?'18':'—';
+      tbody += `<tr class="${s.phase==='practice'?'prac':''}"><td><b>Wk ${s.wk}</b></td><td>${s.date}</td><td>${nineL}</td><td>${fmt}${ovr?' <span class="ovr-badge">🔀</span>':''}</td>`;
+      PLAYERS.forEach(p => { const d = wkData[p]; const isBest = d?.net != null && d.net === bests[p]; tbody += `<td>${d?.gross??'—'}</td><td class="${isBest?'best':''}">${d?.net??'—'}${isBest?' ⭐':''}</td>`; });
+      tbody += '</tr>';
     });
   }
-  tbody+=`<tr style="background:#f0faf3;font-weight:700"><td colspan="4">Season Best Net</td>`;
-  PLAYERS.forEach(p=>{ tbody+=`<td>—</td><td class="best">${bests[p]??'—'}</td>`; });
-  tbody+='</tr>';
-  tbl.tBodies[0]?tbl.tBodies[0].innerHTML=tbody:tbl.createTBody().innerHTML=tbody;
+  tbody += `<tr style="background:#f0faf3;font-weight:700"><td colspan="4">Season Best Net</td>`;
+  PLAYERS.forEach(p => { tbody += `<td>—</td><td class="best">${bests[p]??'—'}</td>`; });
+  tbody += '</tr>';
+  tbl.tBodies[0] ? tbl.tBodies[0].innerHTML = tbody : tbl.createTBody().innerHTML = tbody;
 }
 
 // ═══════════════════════════════════════
