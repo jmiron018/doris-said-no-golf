@@ -1538,7 +1538,7 @@ function renderRoundHistory() {
   let roundsHtml = '';
   [...scoredWks].reverse().forEach(s => {
     const wkData = merged[s.wk] || {};
-    const wkPts = pts[s.wk] || pts[String(s.wk)] || {};
+    const wkPts = s.phase === 'practice' ? {} : (pts[s.wk] || pts[String(s.wk)] || {});
     const fmt = getEffectiveFmt(s.wk);
     const nine = Object.values(wkData).find(d => d?.nine)?.nine || 'front';
     const nineL = nine === 'front' ? 'Front 9' : nine === 'back' ? 'Back 9' : 'Full 18';
