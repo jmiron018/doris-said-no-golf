@@ -1448,11 +1448,38 @@ function renderRoundHistory() {
   const allScores = getScores();
   const pts = getPts();
 
-  // Find all weeks with scores
-  const scoredWks = SCHEDULE.filter(s => {
-    const wkData = allScores[s.wk] || allScores[String(s.wk)];
-    return wkData && Object.keys(wkData).length > 0;
+  // Build merged scores: team-format weeks pull directly from team data so
+  // rounds appear even if saveTeamPoints hasn't been run since the fix.
+  const merged = {};
+  SCHEDULE.forEach(s => {
+    const wk = s.wk;
+    merged[wk] = {...(allScores[wk] || allScores[String(wk)] || {})};
+    if (TEAM_FMTS.includes(getEffectiveFmt(wk))) {
+      const td   = getTeamData(wk);
+      const nine = td.nine || 'front';
+      const idxs = getHolesForNine(nine);
+      Object.keys(td.scores || {}).forEach(p => {
+        if (merged[wk][p]?.gross != null) return;
+        const saved = td.scores[p]?.holes || {};
+        const hi    = td.scores[p]?.hiSnapshot ?? (load('hcaps',{})[p] ?? null);
+        const st    = getStrokesFor(p, hi != null ? Number(hi) : null);
+        let gross = 0, adjGross = 0, net = 0, stableford = 0, cnt = 0;
+        idxs.forEach(i => {
+          const v = saved[i] ?? saved[String(i)];
+          if (v !== undefined && v !== '') {
+            const gv = Number(v);
+            const {net: nv} = calcNet(gv, COURSE.par[i], st[i]);
+            gross += gv; adjGross += Math.min(gv, COURSE.par[i]+2+st[i]);
+            net += nv; stableford += calcStablefordPts(nv, COURSE.par[i]); cnt++;
+          }
+        });
+        if (cnt > 0) merged[wk][p] = { gross, adjGross, net, stableford, nine, hiSnapshot: hi };
+      });
+    }
   });
+
+  // Find all weeks with scores
+  const scoredWks = SCHEDULE.filter(s => Object.keys(merged[s.wk] || {}).length > 0);
 
   if (!scoredWks.length) {
     document.getElementById('rh-rounds').innerHTML = '<div class="card"><div class="empty">No rounds played yet.</div></div>';
@@ -1464,7 +1491,7 @@ function renderRoundHistory() {
   const bests = {};
   PLAYERS.forEach(p => { bests[p] = { net: null, gross: null, stbl: null, netWk: null, grossWk: null, stblWk: null }; });
   scoredWks.forEach(s => {
-    const wkData = allScores[s.wk] || allScores[String(s.wk)] || {};
+    const wkData = merged[s.wk] || {};
     PLAYERS.forEach(p => {
       const d = wkData[p];
       if (!d) return;
@@ -1510,7 +1537,7 @@ function renderRoundHistory() {
   // Per-week round cards
   let roundsHtml = '';
   [...scoredWks].reverse().forEach(s => {
-    const wkData = allScores[s.wk] || allScores[String(s.wk)] || {};
+    const wkData = merged[s.wk] || {};
     const wkPts = pts[s.wk] || pts[String(s.wk)] || {};
     const fmt = getEffectiveFmt(s.wk);
     const nine = Object.values(wkData).find(d => d?.nine)?.nine || 'front';
