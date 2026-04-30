@@ -761,19 +761,19 @@ main{max-width:1200px;margin:0 auto;padding:28px 20px}
 <!-- BOOKIE CENTRAL -->
 <div id="tab-bookie" class="tab">
   <div class="sec-title">Bookie Central</div>
-  <div class="sec-sub">Who owes what · Running ledger across all weeks</div>
+  <div class="sec-sub">Who owes what · All weeks including practice</div>
 
   <div class="card" style="margin-bottom:16px">
     <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:14px">
-      <div class="card-title" style="margin:0">Net Balances</div>
+      <div class="card-title" style="margin:0">Debt Matrix</div>
       <button class="btn btn-primary" id="bk-add-btn" onclick="openBookieForm()" style="display:none">+ Add Entry</button>
     </div>
-    <div id="bk-balances" style="display:flex;flex-wrap:wrap;gap:8px"></div>
+    <div id="bk-matrix" style="overflow-x:auto"></div>
   </div>
 
   <div class="card">
     <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:14px">
-      <div class="card-title" style="margin:0">Ledger</div>
+      <div class="card-title" style="margin:0">History</div>
       <div style="display:flex;gap:6px;align-items:center">
         <label style="font-size:12px;color:var(--muted)">
           <input type="checkbox" id="bk-show-settled" onchange="renderBookie()" style="margin-right:4px">Show settled
@@ -784,21 +784,21 @@ main{max-width:1200px;margin:0 auto;padding:28px 20px}
   </div>
 
   <!-- Add Entry Form -->
-  <div id="bk-form-wrap" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:200;display:none;align-items:center;justify-content:center;padding:16px">
-    <div style="background:#fff;border-radius:14px;padding:24px;width:100%;max-width:400px;box-shadow:0 8px 40px rgba(0,0,0,.18)">
+  <div id="bk-form-wrap" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:200;align-items:center;justify-content:center;padding:16px">
+    <div style="background:#fff;border-radius:14px;padding:24px;width:100%;max-width:440px;box-shadow:0 8px 40px rgba(0,0,0,.18);max-height:90vh;overflow-y:auto">
       <div style="font-family:'Bebas Neue',sans-serif;font-size:22px;color:var(--fairway);margin-bottom:18px">New Entry</div>
       <div style="display:grid;gap:12px">
         <div>
-          <div style="font-size:12px;font-weight:700;color:var(--mid);margin-bottom:4px">FROM (owes)</div>
-          <select id="bk-from" style="width:100%;padding:8px 10px;border:1.5px solid #ddd;border-radius:8px;font-size:14px;font-family:'DM Sans',sans-serif"></select>
+          <div style="font-size:12px;font-weight:700;color:var(--mid);margin-bottom:4px">WINNER (receives)</div>
+          <select id="bk-to" onchange="refreshBookiePayers()" style="width:100%;padding:8px 10px;border:1.5px solid #ddd;border-radius:8px;font-size:14px;font-family:'DM Sans',sans-serif"></select>
         </div>
         <div>
-          <div style="font-size:12px;font-weight:700;color:var(--mid);margin-bottom:4px">TO (receives)</div>
-          <select id="bk-to" style="width:100%;padding:8px 10px;border:1.5px solid #ddd;border-radius:8px;font-size:14px;font-family:'DM Sans',sans-serif"></select>
+          <div style="font-size:12px;font-weight:700;color:var(--mid);margin-bottom:4px">PAYERS (each owe)</div>
+          <div id="bk-payers" style="display:grid;grid-template-columns:1fr 1fr;gap:6px;background:#f8f8f8;border-radius:8px;padding:10px"></div>
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
           <div>
-            <div style="font-size:12px;font-weight:700;color:var(--mid);margin-bottom:4px">AMOUNT ($)</div>
+            <div style="font-size:12px;font-weight:700;color:var(--mid);margin-bottom:4px">AMOUNT EACH ($)</div>
             <input type="number" id="bk-amount" min="0.5" step="0.5" value="1" style="width:100%;padding:8px 10px;border:1.5px solid #ddd;border-radius:8px;font-size:14px;font-family:'DM Sans',sans-serif">
           </div>
           <div>
@@ -810,7 +810,13 @@ main{max-width:1200px;margin:0 auto;padding:28px 20px}
         </div>
         <div>
           <div style="font-size:12px;font-weight:700;color:var(--mid);margin-bottom:4px">REASON</div>
-          <input type="text" id="bk-reason" placeholder="e.g. CTP Hole 7, Low round, Side bet…" style="width:100%;padding:8px 10px;border:1.5px solid #ddd;border-radius:8px;font-size:14px;font-family:'DM Sans',sans-serif">
+          <select id="bk-reason" style="width:100%;padding:8px 10px;border:1.5px solid #ddd;border-radius:8px;font-size:14px;font-family:'DM Sans',sans-serif">
+            <option value="CTP">CTP</option>
+            <option value="Longest Drive">Longest Drive</option>
+            <option value="Dots">Dots</option>
+            <option value="Round Winner">Round Winner</option>
+            <option value="Side Bet">Side Bet</option>
+          </select>
         </div>
       </div>
       <div style="display:flex;gap:8px;margin-top:18px;justify-content:flex-end">
@@ -1090,7 +1096,7 @@ function updateAuthUI() {
     });
     document.querySelectorAll('.mob-nav button').forEach(b => b.style.display = '');
   } else {
-    authBtns.innerHTML = `<button onclick="showLogin()" style="background:var(--gold);border:none;color:var(--fairway);font-size:12px;font-weight:700;padding:4px 12px;border-radius:5px;cursor:pointer;font-family:'DM Sans',sans-serif">🔐 Login</button>`;
+    authBtns.innerHTML = `<button onclick="showLogin()" style="background:var(--gold);border:none;color:var(--fairway);font-size:12px;font-weight:700;padding:4px 12px;border-radius:5px;cursor:pointer;font-family:'DM Sans',sans-serif">🔐 Commish Entry</button>`;
     editTabs.forEach(t => {
       const btn = document.querySelector(`nav button[onclick="showTab('${t}')"]`);
       if (btn) btn.style.display = 'none';
@@ -4171,34 +4177,54 @@ function renderBookie() {
   const addBtn = document.getElementById('bk-add-btn');
   if (addBtn) addBtn.style.display = isCommissioner ? '' : 'none';
 
-  // ── Net balances ──
-  const net = {}; // player → net dollars (positive = owed money, negative = owes money)
+  // ── Debt matrix from unsettled entries ──
+  // owes[fromPlayer][toPlayer] = total amount
+  const owes = {};
   entries.filter(e => !e.settled).forEach(e => {
-    net[e.from] = (net[e.from] || 0) - Number(e.amount);
-    net[e.to]   = (net[e.to]   || 0) + Number(e.amount);
+    const froms = Array.isArray(e.from) ? e.from : [e.from];
+    const amt   = Number(e.amountEach || e.amount || 0);
+    froms.forEach(f => {
+      if (!owes[f]) owes[f] = {};
+      owes[f][e.to] = (owes[f][e.to] || 0) + amt;
+    });
   });
 
-  const balEl = document.getElementById('bk-balances');
-  const allPlayers = [...new Set([...PLAYERS, ...Object.keys(net)])].filter(p => net[p] !== undefined && net[p] !== 0);
-  if (allPlayers.length === 0) {
-    balEl.innerHTML = '<span style="color:var(--muted);font-size:13px">No outstanding balances</span>';
+  const allInData = [...new Set([
+    ...Object.keys(owes),
+    ...Object.values(owes).flatMap(o => Object.keys(o))
+  ])];
+  const cols = [...PLAYERS.filter(p => allInData.includes(p)), ...allInData.filter(p => !PLAYERS.includes(p))];
+
+  const matrixEl = document.getElementById('bk-matrix');
+  if (cols.length === 0) {
+    matrixEl.innerHTML = '<span style="color:var(--muted);font-size:13px">No outstanding debts</span>';
   } else {
-    const sorted = [...allPlayers].sort((a,b) => net[a] - net[b]);
-    balEl.innerHTML = sorted.map(p => {
-      const v = net[p];
-      const isOwed = v > 0;
-      const bg  = isOwed ? '#d8f3dc' : '#fde8e8';
-      const col = isOwed ? 'var(--green)' : 'var(--red)';
-      const sign = isOwed ? '+' : '';
-      return `<div style="background:${bg};border-radius:8px;padding:8px 14px;display:flex;flex-direction:column;align-items:center;min-width:90px">
-        <div style="font-size:11px;font-weight:700;color:var(--mid);text-transform:uppercase;letter-spacing:.4px;margin-bottom:2px">${p.split(' ')[0]}</div>
-        <div style="font-size:18px;font-weight:700;color:${col}">${sign}$${Math.abs(v).toFixed(2).replace('.00','')}</div>
-        <div style="font-size:10px;color:var(--muted)">${isOwed ? 'is owed' : 'owes'}</div>
-      </div>`;
-    }).join('');
+    const thStyle = 'padding:6px 10px;font-size:11px;font-weight:700;color:var(--mid);text-transform:uppercase;letter-spacing:.4px;white-space:nowrap';
+    const tdBase  = 'padding:7px 10px;text-align:center;font-size:13px;border-bottom:1px solid #f0f0f0';
+    let html = `<table style="width:100%;border-collapse:collapse;font-size:13px">
+      <thead><tr style="border-bottom:2px solid #eee">
+        <th style="${thStyle}">Owes ↓ / Wins →</th>
+        ${cols.map(p => `<th style="${thStyle}">${p.split(' ')[0]}</th>`).join('')}
+      </tr></thead><tbody>`;
+    cols.forEach(r => {
+      const rowTotal = cols.reduce((s, c) => s + (owes[r]?.[c] || 0), 0);
+      if (rowTotal === 0) return;
+      html += `<tr>
+        <td style="padding:7px 10px;font-weight:700;font-size:13px;border-bottom:1px solid #f0f0f0;white-space:nowrap">${r.split(' ')[0]}</td>
+        ${cols.map(c => {
+          if (r === c) return `<td style="${tdBase};color:#ddd">—</td>`;
+          const v = owes[r]?.[c] || 0;
+          return v > 0
+            ? `<td style="${tdBase};font-weight:700;color:var(--red);background:#fff5f5">$${v.toFixed(2).replace('.00','')}</td>`
+            : `<td style="${tdBase};color:#e0e0e0">·</td>`;
+        }).join('')}
+      </tr>`;
+    });
+    html += '</tbody></table>';
+    matrixEl.innerHTML = html;
   }
 
-  // ── Ledger ──
+  // ── History ──
   const visible = showSettled ? entries : entries.filter(e => !e.settled);
   const ledEl = document.getElementById('bk-ledger');
   if (visible.length === 0) {
@@ -4209,9 +4235,9 @@ function renderBookie() {
   const sorted = [...visible].sort((a,b) => (b.ts||0) - (a.ts||0));
   ledEl.innerHTML = `<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px">
     <thead><tr style="border-bottom:2px solid #eee">
-      <th style="text-align:left;padding:6px 8px;color:var(--mid);font-size:11px;text-transform:uppercase;letter-spacing:.4px">From</th>
-      <th style="text-align:left;padding:6px 8px;color:var(--mid);font-size:11px;text-transform:uppercase;letter-spacing:.4px">To</th>
-      <th style="text-align:right;padding:6px 8px;color:var(--mid);font-size:11px;text-transform:uppercase;letter-spacing:.4px">Amt</th>
+      <th style="text-align:left;padding:6px 8px;color:var(--mid);font-size:11px;text-transform:uppercase;letter-spacing:.4px">Payers</th>
+      <th style="text-align:left;padding:6px 8px;color:var(--mid);font-size:11px;text-transform:uppercase;letter-spacing:.4px">Winner</th>
+      <th style="text-align:right;padding:6px 8px;color:var(--mid);font-size:11px;text-transform:uppercase;letter-spacing:.4px">Each</th>
       <th style="text-align:left;padding:6px 8px;color:var(--mid);font-size:11px;text-transform:uppercase;letter-spacing:.4px">Reason</th>
       <th style="text-align:center;padding:6px 8px;color:var(--mid);font-size:11px;text-transform:uppercase;letter-spacing:.4px">Wk</th>
       <th style="text-align:center;padding:6px 8px;color:var(--mid);font-size:11px;text-transform:uppercase;letter-spacing:.4px">Status</th>
@@ -4219,13 +4245,15 @@ function renderBookie() {
     </tr></thead>
     <tbody>
       ${sorted.map(e => {
+        const froms = Array.isArray(e.from) ? e.from : [e.from];
+        const amt = Number(e.amountEach || e.amount || 0);
         const settled = e.settled;
         const rowStyle = settled ? 'opacity:.45' : '';
         const amtColor = settled ? 'var(--muted)' : 'var(--red)';
         return `<tr style="border-bottom:1px solid #f0f0f0;${rowStyle}">
-          <td style="padding:7px 8px;font-weight:600">${e.from}</td>
+          <td style="padding:7px 8px;font-weight:600">${froms.map(p => p.split(' ')[0]).join(', ')}</td>
           <td style="padding:7px 8px">${e.to}</td>
-          <td style="padding:7px 8px;text-align:right;font-weight:700;color:${amtColor}">$${Number(e.amount).toFixed(2).replace('.00','')}</td>
+          <td style="padding:7px 8px;text-align:right;font-weight:700;color:${amtColor}">$${amt.toFixed(2).replace('.00','')}</td>
           <td style="padding:7px 8px;color:var(--mid)">${e.reason || '—'}</td>
           <td style="padding:7px 8px;text-align:center;color:var(--muted)">${e.week ? 'Wk '+e.week : '—'}</td>
           <td style="padding:7px 8px;text-align:center">
@@ -4245,21 +4273,24 @@ function renderBookie() {
 
 function openBookieForm() {
   if (!requireAuth()) return;
-  // Populate player dropdowns
-  const players = PLAYERS;
-  ['bk-from','bk-to'].forEach(id => {
-    const sel = document.getElementById(id);
-    sel.innerHTML = players.map(p => `<option value="${p}">${p}</option>`).join('');
-  });
-  document.getElementById('bk-to').selectedIndex = 1;
-  // Populate week dropdown
+  const toSel = document.getElementById('bk-to');
+  toSel.innerHTML = PLAYERS.map(p => `<option value="${p}">${p}</option>`).join('');
   const wkSel = document.getElementById('bk-week');
   wkSel.innerHTML = '<option value="">—</option>' +
-    SCORE_WKS.map(w => { const s = SCHEDULE.find(x=>x.wk===w); return `<option value="${w}">Wk ${w} — ${s?.date||''}</option>`; }).join('');
+    SCHEDULE.map(s => `<option value="${s.wk}">Wk ${s.wk} — ${s.date||''}</option>`).join('');
   document.getElementById('bk-amount').value = '1';
-  document.getElementById('bk-reason').value = '';
-  const wrap = document.getElementById('bk-form-wrap');
-  wrap.style.display = 'flex';
+  document.getElementById('bk-reason').selectedIndex = 0;
+  refreshBookiePayers();
+  document.getElementById('bk-form-wrap').style.display = 'flex';
+}
+
+function refreshBookiePayers() {
+  const winner = document.getElementById('bk-to').value;
+  document.getElementById('bk-payers').innerHTML = PLAYERS
+    .filter(p => p !== winner)
+    .map(p => `<label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;font-family:'DM Sans',sans-serif">
+      <input type="checkbox" value="${p}" checked style="width:14px;height:14px"> ${p.split(' ')[0]}
+    </label>`).join('');
 }
 
 function closeBookieForm() {
@@ -4268,18 +4299,18 @@ function closeBookieForm() {
 
 function saveBookieEntry() {
   if (!requireAuth()) return;
-  const from   = document.getElementById('bk-from').value;
-  const to     = document.getElementById('bk-to').value;
-  const amount = parseFloat(document.getElementById('bk-amount').value);
-  const week   = document.getElementById('bk-week').value;
-  const reason = document.getElementById('bk-reason').value.trim();
-  if (from === to) { toast('⚠️ From and To must be different players'); return; }
+  const to      = document.getElementById('bk-to').value;
+  const amount  = parseFloat(document.getElementById('bk-amount').value);
+  const week    = document.getElementById('bk-week').value;
+  const reason  = document.getElementById('bk-reason').value;
+  const checked = [...document.querySelectorAll('#bk-payers input[type=checkbox]:checked')].map(c => c.value);
+  if (!checked.length) { toast('⚠️ Select at least one payer'); return; }
   if (!amount || amount <= 0) { toast('⚠️ Enter a valid amount'); return; }
   const data = getBookie();
   if (!data.entries) data.entries = [];
   data.entries.push({
     id: Date.now() + '_' + Math.random().toString(36).slice(2,7),
-    from, to, amount, reason,
+    from: checked, to, amountEach: amount, reason,
     week: week ? Number(week) : null,
     settled: false,
     ts: Date.now()
@@ -4287,7 +4318,7 @@ function saveBookieEntry() {
   saveBookie(data);
   closeBookieForm();
   renderBookie();
-  toast(`💰 Entry added: ${from} owes ${to} $${amount}`);
+  toast(`💰 Entry added: ${checked.map(p=>p.split(' ')[0]).join(', ')} each owe ${to.split(' ')[0]} $${amount}`);
 }
 
 function settleBookieEntry(id) {
@@ -4299,7 +4330,9 @@ function settleBookieEntry(id) {
   entry.settledTs = Date.now();
   saveBookie(data);
   renderBookie();
-  toast(`✅ Settled: ${entry.from} → ${entry.to} $${entry.amount}`);
+  const froms = Array.isArray(entry.from) ? entry.from : [entry.from];
+  const amt = Number(entry.amountEach || entry.amount || 0);
+  toast(`✅ Settled: ${froms.map(p=>p.split(' ')[0]).join(', ')} → ${entry.to.split(' ')[0]} $${amt}`);
 }
 
 function deleteBookieEntry(id) {
