@@ -1490,8 +1490,11 @@ function renderRoundHistory() {
         });
         if (cnt === 0) return;
         if (merged[wk][p]?.gross != null) {
-          // Player already has individual score data — just fill in missing stableford
-          if (merged[wk][p].stableford == null) merged[wk][p] = { ...merged[wk][p], stableford };
+          // Player already has individual score data — fill in any missing computed fields
+          const patch = {};
+          if (merged[wk][p].stableford == null) patch.stableford = stableford;
+          if (merged[wk][p].adjGross == null)   patch.adjGross   = adjGross;
+          if (Object.keys(patch).length) merged[wk][p] = { ...merged[wk][p], ...patch };
         } else {
           merged[wk][p] = { gross, adjGross, net, stableford, nine, hiSnapshot: hi };
         }
