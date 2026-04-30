@@ -4317,9 +4317,9 @@ function renderBookie() {
   const sorted = [...visible].sort((a,b) => (b.ts||0) - (a.ts||0));
   ledEl.innerHTML = `<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px">
     <thead><tr style="border-bottom:2px solid #eee">
-      <th style="text-align:left;padding:6px 8px;color:var(--mid);font-size:11px;text-transform:uppercase;letter-spacing:.4px">Payers</th>
-      <th style="text-align:left;padding:6px 8px;color:var(--mid);font-size:11px;text-transform:uppercase;letter-spacing:.4px">Winner</th>
-      <th style="text-align:right;padding:6px 8px;color:var(--mid);font-size:11px;text-transform:uppercase;letter-spacing:.4px">Each</th>
+      <th style="text-align:left;padding:6px 8px;color:var(--mid);font-size:11px;text-transform:uppercase;letter-spacing:.4px">From</th>
+      <th style="text-align:left;padding:6px 8px;color:var(--mid);font-size:11px;text-transform:uppercase;letter-spacing:.4px">To</th>
+      <th style="text-align:right;padding:6px 8px;color:var(--mid);font-size:11px;text-transform:uppercase;letter-spacing:.4px">Amt</th>
       <th style="text-align:left;padding:6px 8px;color:var(--mid);font-size:11px;text-transform:uppercase;letter-spacing:.4px">Reason</th>
       <th style="text-align:center;padding:6px 8px;color:var(--mid);font-size:11px;text-transform:uppercase;letter-spacing:.4px">Wk</th>
       <th style="text-align:center;padding:6px 8px;color:var(--mid);font-size:11px;text-transform:uppercase;letter-spacing:.4px">Status</th>
@@ -4391,17 +4391,20 @@ function saveBookieEntry() {
   if (!amount || amount <= 0) { toast('⚠️ Enter a valid amount'); return; }
   const data = getBookie();
   if (!data.entries) data.entries = [];
-  data.entries.push({
-    id: Date.now() + '_' + Math.random().toString(36).slice(2,7),
-    from: checked, to, amountEach: amount, reason,
-    week: week ? Number(week) : null,
-    settled: false,
-    ts: Date.now()
+  const ts = Date.now();
+  checked.forEach((p, i) => {
+    data.entries.push({
+      id: ts + '_' + i + '_' + Math.random().toString(36).slice(2,5),
+      from: p, to, amountEach: amount, reason,
+      week: week ? Number(week) : null,
+      settled: false,
+      ts: ts + i
+    });
   });
   saveBookie(data);
   closeBookieForm();
   renderBookie();
-  toast(`💰 Entry added: ${checked.map(p=>p.split(' ')[0]).join(', ')} each owe ${to.split(' ')[0]} $${amount}`);
+  toast(`💰 ${checked.length} debt${checked.length>1?'s':''} added → ${to.split(' ')[0]} $${amount} each`);
 }
 
 function settleBookieEntry(id) {
