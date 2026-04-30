@@ -3337,6 +3337,29 @@ function saveTeamPoints() {
   if (Object.keys(pts[String(wk)]).length === 0) delete pts[String(wk)];
   savePts(pts);
 
+  // Write per-player gross/net summaries into 'scores' key so Round History shows team weeks
+  const allScores = getScores();
+  if (!allScores[String(wk)]) allScores[String(wk)] = {};
+  const holeIdxsForHistory = getHolesForNine(nine);
+  Object.keys(scores).forEach(p => {
+    const saved = scores[p]?.holes || {};
+    const hi2 = scores[p]?.hiSnapshot ?? (load('hcaps',{})[p] ?? null);
+    const st2 = getStrokesFor(p, hi2 != null ? Number(hi2) : null);
+    let gross2 = 0, net2 = 0, cnt2 = 0;
+    holeIdxsForHistory.forEach(i => {
+      const v = saved[i] ?? saved[String(i)];
+      if (v !== undefined && v !== '') {
+        gross2 += Number(v);
+        net2 += calcNet(Number(v), COURSE.par[i], st2[i]).net;
+        cnt2++;
+      }
+    });
+    if (cnt2 > 0) {
+      allScores[String(wk)][p] = { ...(allScores[String(wk)][p] || {}), gross: gross2, net: net2, nine, hiSnapshot: hi2 };
+    }
+  });
+  saveScoresDB(allScores);
+
   // Update handicap tracker — load each player's rounds fresh from Firebase first
   const allPlayers = [...new Set(matches.flatMap(m => [...(m.team1||[]), ...(m.team2||[])]).filter(Boolean))];
   const hcpPromises = allPlayers.map(p => fbLoad('hcpt_' + p.replace(/\W/g,'_')));
@@ -4288,9 +4311,10 @@ function refreshBookiePayers() {
   const winner = document.getElementById('bk-to').value;
   document.getElementById('bk-payers').innerHTML = PLAYERS
     .filter(p => p !== winner)
-    .map(p => `<label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;font-family:'DM Sans',sans-serif">
-      <input type="checkbox" value="${p}" checked style="width:14px;height:14px"> ${p.split(' ')[0]}
-    </label>`).join('');
+    .map(p => `<div style="display:flex;align-items:center;gap:6px;font-size:13px;font-family:'DM Sans',sans-serif">
+      <input type="checkbox" value="${p}" checked style="width:14px;height:14px;cursor:pointer">
+      <span>${p.split(' ')[0]}</span>
+    </div>`).join('');
 }
 
 function closeBookieForm() {
