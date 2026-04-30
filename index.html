@@ -1957,9 +1957,11 @@ function renderScoreCards() {
       const v = (saved[i]!==undefined?saved[i]:saved[String(i)]!==undefined?saved[String(i)]:'')||'';
       const marker = v!=='' ? grossMarkerCls(Number(v), COURSE.par[i]) : '';
       return `<td><div class="g-wrap">
-        <input class="g-input" type="number" min="1" max="20" id="g_${pid}_${i}"
+        <input class="g-input" type="text" inputmode="numeric" pattern="[0-9]*" id="g_${pid}_${i}"
           value="${v}"
-          oninput="onGross('${pid}',${i},'${p.replace(/'/g,"\\'")}',${wk})" placeholder="—">
+          oninput="onGross('${pid}',${i},'${p.replace(/'/g,"\\'")}',${wk})"
+          onkeydown="indGrossKeydown(event,'${pid}',${i},${holeIdxs.length},${holeIdxs[0]})"
+          placeholder="—">
         <div class="g-marker ${marker}" id="gm_${pid}_${i}"></div>
       </div></td>`;
     }).join('');
@@ -2975,27 +2977,89 @@ function tsGrossKeydown(e, mi, tk, pid, hIdx, totalHoles, firstHoleIdx) {
   const current = el.value.replace(/\D/g, '');
   const isAllSelected = el.selectionStart === 0 && el.selectionEnd === el.value.length;
 
+  const tsAdvance = () => {
+    const offset = hIdx - firstHoleIdx;
+    if (offset + 1 < totalHoles) {
+      setTimeout(() => {
+        const next = document.getElementById(`ts_g_${mi}_${tk}_${pid}_${firstHoleIdx + offset + 1}`);
+        if (next) { next.focus(); next.select(); }
+      }, 0);
+    }
+  };
+
   if (current === '' || isAllSelected) {
     el.value = digit;
+    el.dispatchEvent(new Event('input'));
+    if (digit !== '1') tsAdvance(); // 2-9: done in one keystroke
   } else {
     const candidate = Number(current + digit);
     if (candidate >= 1 && candidate <= 20) {
       el.value = String(candidate);
       el.dispatchEvent(new Event('input'));
-      // Auto-advance after valid double digit
-      const offset = hIdx - firstHoleIdx;
-      if (offset + 1 < totalHoles) {
-        setTimeout(() => {
-          const next = document.getElementById(`ts_g_${mi}_${tk}_${pid}_${firstHoleIdx + offset + 1}`);
-          if (next) { next.focus(); next.select(); }
-        }, 0);
-      }
-      return;
+      // score starts with 1 (10-19) — no auto-advance
     } else {
       el.value = digit; // invalid combo — start fresh
+      el.dispatchEvent(new Event('input'));
+      if (digit !== '1') tsAdvance();
     }
   }
-  el.dispatchEvent(new Event('input'));
+}
+
+function indGrossKeydown(e, pid, hIdx, totalHoles, firstHoleIdx) {
+  const el = e.target;
+  if (e.key === 'Tab') {
+    e.preventDefault();
+    const offset = hIdx - firstHoleIdx;
+    const nextOffset = e.shiftKey ? offset - 1 : offset + 1;
+    if (nextOffset >= 0 && nextOffset < totalHoles) {
+      const next = document.getElementById(`g_${pid}_${firstHoleIdx + nextOffset}`);
+      if (next) { next.focus(); next.select(); }
+    }
+    return;
+  }
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    const offset = hIdx - firstHoleIdx;
+    if (offset + 1 < totalHoles) {
+      const next = document.getElementById(`g_${pid}_${firstHoleIdx + offset + 1}`);
+      if (next) { next.focus(); next.select(); }
+    }
+    return;
+  }
+  if (e.key === 'Backspace' || e.key === 'Delete') return;
+  if (e.key < '0' || e.key > '9') { e.preventDefault(); return; }
+
+  e.preventDefault();
+  const digit = e.key;
+  const current = el.value.replace(/\D/g, '');
+  const isAllSelected = el.selectionStart === 0 && el.selectionEnd === el.value.length;
+
+  const indAdvance = () => {
+    const offset = hIdx - firstHoleIdx;
+    if (offset + 1 < totalHoles) {
+      setTimeout(() => {
+        const next = document.getElementById(`g_${pid}_${firstHoleIdx + offset + 1}`);
+        if (next) { next.focus(); next.select(); }
+      }, 0);
+    }
+  };
+
+  if (current === '' || isAllSelected) {
+    el.value = digit;
+    el.dispatchEvent(new Event('input'));
+    if (digit !== '1') indAdvance();
+  } else {
+    const candidate = Number(current + digit);
+    if (candidate >= 1 && candidate <= 20) {
+      el.value = String(candidate);
+      el.dispatchEvent(new Event('input'));
+      // score starts with 1 (10-19) — no auto-advance
+    } else {
+      el.value = digit;
+      el.dispatchEvent(new Event('input'));
+      if (digit !== '1') indAdvance();
+    }
+  }
 }
 
 function onTeamGross(mi, tk, pid, playerName, hIdx, wk) {
