@@ -344,11 +344,11 @@ main{max-width:1200px;margin:0 auto;padding:28px 20px}
 <!-- WEEKLY POINTS -->
 <div id="tab-weekly" class="tab">
   <div class="sec-title">Weekly Points</div>
-  <div class="sec-sub">Finish points auto-ranked from net scores · Bonus points entered on Scores tab</div>
+  <div class="sec-sub">Finish points auto-ranked from net scores · Bonus points entered on Scores tab <span id="sec-phase-pts"></span></div>
   <div class="card">
     <div class="week-sel">
       <label>Week:</label>
-      <select id="pts-week-sel" onchange="renderWeekly()"></select>
+      <select id="pts-week-sel" onchange="renderWeekly();updatePhaseBadge('pts-week-sel','sec-phase-pts')"></select>
       <span id="pts-week-info" style="font-size:13px;color:var(--muted)"></span>
     </div>
     <div id="pts-fmt-bar"></div>
@@ -363,7 +363,7 @@ main{max-width:1200px;margin:0 auto;padding:28px 20px}
     <div style="font-size:12px;color:var(--muted);margin-bottom:12px">Finish + bonus · Review before saving</div>
     <div id="pts-preview"></div>
     <div class="flex mt16">
-      <button class="btn btn-primary" onclick="saveWeeklyPoints()">💾 Save Points</button>
+      <button class="btn btn-primary" id="btn-save-pts" onclick="saveWeeklyPoints()">💾 Save Points</button>
       <button class="btn btn-secondary" onclick="renderWeekly()">↩ Reset</button>
     </div>
   </div>
@@ -373,11 +373,11 @@ main{max-width:1200px;margin:0 auto;padding:28px 20px}
 <!-- SCORES -->
 <div id="tab-scores" class="tab">
   <div class="sec-title">Individual Scores</div>
-  <div class="sec-sub">Stroke Play · Stableford · Hole-by-hole · Net auto-calculated</div>
+  <div class="sec-sub">Stroke Play · Stableford · Hole-by-hole · Net auto-calculated <span id="sec-phase-scores"></span></div>
   <div class="card">
     <div class="week-sel">
       <label>Week:</label>
-      <select id="sc-week-sel" onchange="onScoreWeekChange()"></select>
+      <select id="sc-week-sel" onchange="onScoreWeekChange();updatePhaseBadge('sc-week-sel','sec-phase-scores')"></select>
       <span id="sc-week-info" style="font-size:13px;color:var(--muted)"></span>
     </div>
     <div id="sc-fmt-bar"></div>
@@ -413,7 +413,7 @@ main{max-width:1200px;margin:0 auto;padding:28px 20px}
   <div id="sc-hcp-warning" style="display:none" class="notice" style="background:#fff3cd;border-left:4px solid var(--gold);padding:10px 14px;border-radius:0 8px 8px 0;font-size:13px;color:#7a5c00;margin-bottom:16px"></div>
   <div id="score-cards"></div>
   <div class="flex" style="margin-bottom:24px">
-    <button class="btn btn-primary" onclick="saveScores()">💾 Save Scores</button>
+    <button class="btn btn-primary" id="btn-save-scores" onclick="saveScores()">💾 Save Scores</button>
     <button class="btn btn-secondary" onclick="clearScores()">Clear Week</button>
   </div>
   <div class="card">
@@ -425,11 +425,11 @@ main{max-width:1200px;margin:0 auto;padding:28px 20px}
 <!-- TEAM SCORES -->
 <div id="tab-teamscores" class="tab">
   <div class="sec-title">Team Scores</div>
-  <div class="sec-sub">Best Ball (Net) · Best Ball Stableford (Net) · 4-Ball Match Play</div>
+  <div class="sec-sub">Best Ball (Net) · Best Ball Stableford (Net) · 4-Ball Match Play <span id="sec-phase-team"></span></div>
   <div class="card">
     <div class="week-sel">
       <label>Week:</label>
-      <select id="ts-week-sel" onchange="onTeamWeekChange()"></select>
+      <select id="ts-week-sel" onchange="onTeamWeekChange();updatePhaseBadge('ts-week-sel','sec-phase-team')"></select>
       <span id="ts-week-info" style="font-size:13px;color:var(--muted)"></span>
     </div>
     <div id="ts-fmt-bar"></div>
@@ -488,19 +488,19 @@ main{max-width:1200px;margin:0 auto;padding:28px 20px}
     </div>
   </div>
   <div class="flex" style="margin-bottom:24px">
-    <button class="btn btn-primary" onclick="saveTeamPoints()">💾 Save & Post Week</button>
+    <button class="btn btn-primary" id="btn-save-team" onclick="saveTeamPoints()">💾 Save & Post Week</button>
   </div>
 </div>
 
 <!-- DOTS -->
 <div id="tab-dots" class="tab">
   <div class="sec-title">Dots Tracker</div>
-  <div class="sec-sub">Side bet · Most dots wins the week</div>
+  <div class="sec-sub">Side bet · Most dots wins the week <span id="sec-phase-dots"></span></div>
   <div class="card">
-    <div class="week-sel"><label>Week:</label><select id="dots-week-sel" onchange="renderDotsInputs()"></select></div>
+    <div class="week-sel"><label>Week:</label><select id="dots-week-sel" onchange="renderDotsInputs();updatePhaseBadge('dots-week-sel','sec-phase-dots')"></select></div>
     <div id="dots-inputs"></div>
     <div class="flex mt16">
-      <button class="btn btn-primary" onclick="saveDots()">💾 Save Dots</button>
+      <button class="btn btn-primary" id="btn-save-dots" onclick="saveDots()">💾 Save Dots</button>
       <button class="btn btn-secondary" onclick="clearDots()">Clear</button>
     </div>
   </div>
@@ -1157,6 +1157,20 @@ const K = k => k; // no prefix needed — Firebase uses doc names
 const load = (k, def) => CACHE[k] !== undefined ? CACHE[k] : def;
 const save = (k, v) => { fbSave(k, v); };
 
+function btnBusy(id, label='⏳ Saving…') { const b = document.getElementById(id); if (b) { b.disabled=true; b._label=b.textContent; b.textContent=label; } }
+function btnDone(id) { const b = document.getElementById(id); if (b) { b.disabled=false; b.textContent=b._label||b.textContent; } }
+
+function updatePhaseBadge(selId, spanId) {
+  const span = document.getElementById(spanId);
+  if (!span) return;
+  const wk = Number(document.getElementById(selId)?.value);
+  const s = SCHEDULE.find(x => x.wk === wk);
+  if (!s) { span.innerHTML = ''; return; }
+  const phCls = {practice:'ph-practice', h1:'ph-h1', h2:'ph-h2', champ:'ph-champ', casual:'ph-casual'};
+  const phLbl = {practice:'Practice', h1:'H1', h2:'H2', champ:'Championship', casual:'Casual'};
+  span.innerHTML = `&nbsp;<span class="ph-badge ${phCls[s.phase]||''}">${phLbl[s.phase]||s.phase} · Wk ${wk}</span>`;
+}
+
 const getPlayers    = () => load('roster', HCP_DATA.map(p=>p.name));
 const savePlayers   = v  => save('roster', v);
 const getPts        = () => load('pts', {});
@@ -1327,11 +1341,11 @@ function showTab(id) {
   });
   if (id==='standings') renderStandings();
   if (id==='history')   renderRoundHistory();
-  if (id==='weekly')  { populateSel('pts-week-sel', SCORE_WKS); renderWeekly(); renderPtsHistory(); }
-  if (id==='scores')  { populateIndivSel(); onScoreWeekChange(); renderScoreHistory(); }
-  if (id==='teamscores') { initTeamScoresTab(); }
+  if (id==='weekly')  { populateSel('pts-week-sel', SCORE_WKS); renderWeekly(); renderPtsHistory(); updatePhaseBadge('pts-week-sel','sec-phase-pts'); }
+  if (id==='scores')  { populateIndivSel(); onScoreWeekChange(); renderScoreHistory(); updatePhaseBadge('sc-week-sel','sec-phase-scores'); }
+  if (id==='teamscores') { initTeamScoresTab(); updatePhaseBadge('ts-week-sel','sec-phase-team'); }
   if (id==='bookie')  { renderBookie(); }
-  if (id==='dots')    { populateDotsSel(); renderDotsInputs(); renderDotsTable(); }
+  if (id==='dots')    { populateDotsSel(); renderDotsInputs(); renderDotsTable(); updatePhaseBadge('dots-week-sel','sec-phase-dots'); }
   if (id==='hcp')     { initHcpTrackerSel(); renderHcpMerged(); }
   if (id==='updatehi'){ renderHIUpdate(); }
   if (id==='schedule'){ renderSchedule(); }
@@ -1884,17 +1898,17 @@ function renderPreview(wk) {
 
 function saveWeeklyPoints() {
   if (!requireAuth()) return;
+  btnBusy('btn-save-pts');
   const wk = Number(document.getElementById('pts-week-sel').value);
   const rows = computeWeekPoints(wk);
   const pts = getPts();
   if (!pts[wk]) pts[wk] = {};
-  // Clear existing week data first, then re-save only non-zero values
   pts[wk] = {};
   rows.forEach(r => { if (r.total > 0) pts[wk][r.player] = r.total; });
-  // If week is now empty, remove it entirely
   if (Object.keys(pts[wk]).length === 0) delete pts[wk];
   savePts(pts);
   renderPtsHistory();
+  btnDone('btn-save-pts');
   toast('✅ Points saved for Week ' + wk);
 }
 
@@ -2119,12 +2133,15 @@ function renderScoreCards() {
             <tr class="row-adj"><td>Adj Gross</td>${adjCells}<td class="tot-col" id="tot_ag2_${pid}" style="color:#856404;font-weight:700">${agStr}</td></tr>
             <tr class="row-net"><td>Net</td>${netCells}<td class="tot-col" id="tot_n2_${pid}">${nStr}</td></tr>
             <tr class="row-sf"><td>Stableford</td>${sfCells}<td class="tot-col" id="tot_sf2_${pid}">${isSF?sfStr:'—'}</td></tr>
-            <tr class="row-dbl"><td>2x Cap</td>${dblCells}<td class="tot-col">${dblTot}</td></tr>
-            <tr class="row-tri"><td>3x Cap</td>${triCells}<td class="tot-col">${triTot}</td></tr>
+            <tr class="row-dbl adv-row" style="display:none"><td>2x Cap</td>${dblCells}<td class="tot-col">${dblTot}</td></tr>
+            <tr class="row-tri adv-row" style="display:none"><td>3x Cap</td>${triCells}<td class="tot-col">${triTot}</td></tr>
           </tbody>
         </table>
       </div>
-      <div class="card-legend">* triple cap applied · † exceeded double cap — no strokes deducted${!isSF?' · Stableford shown as — (not a stableford week)':''}</div>
+      <div class="card-legend">
+        * triple cap applied · † exceeded double cap — no strokes deducted${!isSF?' · Stableford shown as — (not a stableford week)':''}
+        &nbsp;·&nbsp;<a href="#" onclick="event.preventDefault();this.closest('.card').querySelectorAll('.adv-row').forEach(r=>r.style.display=r.style.display==='none'?'':'none');this.textContent=this.textContent.includes('Show')?'Hide cap rows':'Show cap rows'" style="font-size:11px;color:var(--mid)">Show cap rows</a>
+      </div>
       <div class="bonus-strip">
         <span style="font-size:12px;font-weight:700;color:var(--mid);text-transform:uppercase;letter-spacing:.3px">Bonuses:</span>
         <div class="be-grp">
@@ -2178,6 +2195,7 @@ function onGross(pid, hIdx, playerName, wk) {
   // Update gross marker
   const markerEl = document.getElementById(`gm_${pid}_${hIdx}`);
   if (markerEl) markerEl.className = 'g-marker ' + (el.value ? grossMarkerCls(raw, par) : '');
+  const netEl = document.getElementById(`net_${pid}_${hIdx}`);
   if (netEl) {
     if (!el.value) { netEl.textContent='—'; netEl.className='net-cell'; }
     else {
@@ -2247,6 +2265,7 @@ function adjBonus(pid, type, delta, wk, playerName) {
 
 function saveScores() {
   if (!requireAuth()) return;
+  btnBusy('btn-save-scores');
   const wk = Number(document.getElementById('sc-week-sel').value);
   const holeIdxs = getHolesForNine(activeNine);
   const allScores = getScores();
@@ -2330,13 +2349,17 @@ function saveScores() {
     if (Object.keys(pts[wk]).length === 0) delete pts[wk];
     savePts(pts);
     renderPtsHistory();
+    btnDone('btn-save-scores');
     toast('✅ Scores saved · Points auto-calculated for Week ' + wk);
   } else {
+    btnDone('btn-save-scores');
     toast('✅ Scores saved for Week ' + wk);
   }
 }
 
 function clearScores() {
+  const wk = document.getElementById('sc-week-sel')?.value;
+  if (!confirm(`Clear all scores for Week ${wk} from the screen? (You'll still need to Save to remove them permanently.)`)) return;
   const holeIdxs = getHolesForNine(activeNine);
   PLAYERS.forEach(p=>{
     const pid = p.replace(/\W/g,'_');
@@ -3365,6 +3388,7 @@ function adjTeamBonus(pid, type, delta, wk, playerName) {
 // ── Save Points ──
 function saveTeamPoints() {
   if (!requireAuth()) return;
+  btnBusy('btn-save-team');
   const wk = Number(document.getElementById('ts-week-sel').value);
   flushGrossBuffer(wk); // commit buffered gross scores to Firebase before computing points
   const data = getTeamData(wk);
@@ -3439,6 +3463,7 @@ function saveTeamPoints() {
       }
     });
     renderHcpTracker();
+    btnDone('btn-save-team');
     toast('✅ Week ' + wk + ' posted · Points, HCP & standings updated');
   });
 }
@@ -3519,12 +3544,13 @@ function renderDotsInputs() {
   document.getElementById('dots-inputs').innerHTML = `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px">
     ${PLAYERS.map(p=>`<div style="display:flex;flex-direction:column;gap:4px">
       <label style="font-size:12px;font-weight:600;color:var(--mid)">${p}</label>
-      <input class="d-input" type="number" id="d_${p.replace(/\W/g,'_')}" min="0" value="${ex[p]!==undefined?ex[p]:''}" placeholder="0">
+      <input class="d-input" type="number" id="d_${p.replace(/\W/g,'_')}" min="0" max="20" value="${ex[p]!==undefined?ex[p]:''}" placeholder="0">
     </div>`).join('')}
   </div>`;
 }
 function saveDots() {
   if (!requireAuth()) return;
+  btnBusy('btn-save-dots');
   const wk = Number(document.getElementById('dots-week-sel').value);
   const dots = getDots();
   if (!dots[wk]) dots[wk]={};
@@ -3533,9 +3559,13 @@ function saveDots() {
   saveDotsToDB(dots);
   renderDotsTable();
   window.scrollTo(0, scrollY);
+  btnDone('btn-save-dots');
   toast('✅ Dots saved for Week '+wk);
 }
-function clearDots() { PLAYERS.forEach(p=>{ const el=document.getElementById('d_'+p.replace(/\W/g,'_')); if(el)el.value=''; }); }
+function clearDots() {
+  if (!confirm('Clear all dot entries from the screen?')) return;
+  PLAYERS.forEach(p=>{ const el=document.getElementById('d_'+p.replace(/\W/g,'_')); if(el)el.value=''; });
+}
 function renderDotsTable() {
   PLAYERS = getPlayers();
   const dots = getDots();
