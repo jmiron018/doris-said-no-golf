@@ -280,6 +280,7 @@ main{max-width:1200px;margin:0 auto;padding:28px 20px}
       <button onclick="showTab('weekly')">Weekly Points</button>
       <button onclick="showTab('scores')">Individual Scores</button>
       <button onclick="showTab('teamscores')">Team Scores</button>
+      <button onclick="showTab('bookie')">Bookie Central</button>
       <button onclick="showTab('dots')">Dots</button>
       <button onclick="showTab('hcp')">HCP</button>
       <button onclick="showTab('schedule')">Schedule</button>
@@ -300,6 +301,7 @@ main{max-width:1200px;margin:0 auto;padding:28px 20px}
   <button onclick="showTab('weekly');closeNav()">📋 Weekly Points</button>
   <button onclick="showTab('scores');closeNav()">🏌️ Individual Scores</button>
   <button onclick="showTab('teamscores');closeNav()">🤝 Team Scores</button>
+  <button onclick="showTab('bookie');closeNav()">💰 Bookie Central</button>
   <button onclick="showTab('dots');closeNav()">🎯 Dots</button>
   <button onclick="showTab('hcp');closeNav()">📊 HCP</button>
   <button onclick="showTab('schedule');closeNav()">📅 Schedule</button>
@@ -756,6 +758,69 @@ main{max-width:1200px;margin:0 auto;padding:28px 20px}
   </div>
 </div>
 
+<!-- BOOKIE CENTRAL -->
+<div id="tab-bookie" class="tab">
+  <div class="sec-title">Bookie Central</div>
+  <div class="sec-sub">Who owes what · Running ledger across all weeks</div>
+
+  <div class="card" style="margin-bottom:16px">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:14px">
+      <div class="card-title" style="margin:0">Net Balances</div>
+      <button class="btn btn-primary" id="bk-add-btn" onclick="openBookieForm()" style="display:none">+ Add Entry</button>
+    </div>
+    <div id="bk-balances" style="display:flex;flex-wrap:wrap;gap:8px"></div>
+  </div>
+
+  <div class="card">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:14px">
+      <div class="card-title" style="margin:0">Ledger</div>
+      <div style="display:flex;gap:6px;align-items:center">
+        <label style="font-size:12px;color:var(--muted)">
+          <input type="checkbox" id="bk-show-settled" onchange="renderBookie()" style="margin-right:4px">Show settled
+        </label>
+      </div>
+    </div>
+    <div id="bk-ledger"></div>
+  </div>
+
+  <!-- Add Entry Form -->
+  <div id="bk-form-wrap" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:200;display:none;align-items:center;justify-content:center;padding:16px">
+    <div style="background:#fff;border-radius:14px;padding:24px;width:100%;max-width:400px;box-shadow:0 8px 40px rgba(0,0,0,.18)">
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:22px;color:var(--fairway);margin-bottom:18px">New Entry</div>
+      <div style="display:grid;gap:12px">
+        <div>
+          <div style="font-size:12px;font-weight:700;color:var(--mid);margin-bottom:4px">FROM (owes)</div>
+          <select id="bk-from" style="width:100%;padding:8px 10px;border:1.5px solid #ddd;border-radius:8px;font-size:14px;font-family:'DM Sans',sans-serif"></select>
+        </div>
+        <div>
+          <div style="font-size:12px;font-weight:700;color:var(--mid);margin-bottom:4px">TO (receives)</div>
+          <select id="bk-to" style="width:100%;padding:8px 10px;border:1.5px solid #ddd;border-radius:8px;font-size:14px;font-family:'DM Sans',sans-serif"></select>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div>
+            <div style="font-size:12px;font-weight:700;color:var(--mid);margin-bottom:4px">AMOUNT ($)</div>
+            <input type="number" id="bk-amount" min="0.5" step="0.5" value="1" style="width:100%;padding:8px 10px;border:1.5px solid #ddd;border-radius:8px;font-size:14px;font-family:'DM Sans',sans-serif">
+          </div>
+          <div>
+            <div style="font-size:12px;font-weight:700;color:var(--mid);margin-bottom:4px">WEEK (opt.)</div>
+            <select id="bk-week" style="width:100%;padding:8px 10px;border:1.5px solid #ddd;border-radius:8px;font-size:14px;font-family:'DM Sans',sans-serif">
+              <option value="">—</option>
+            </select>
+          </div>
+        </div>
+        <div>
+          <div style="font-size:12px;font-weight:700;color:var(--mid);margin-bottom:4px">REASON</div>
+          <input type="text" id="bk-reason" placeholder="e.g. CTP Hole 7, Low round, Side bet…" style="width:100%;padding:8px 10px;border:1.5px solid #ddd;border-radius:8px;font-size:14px;font-family:'DM Sans',sans-serif">
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:18px;justify-content:flex-end">
+        <button class="btn btn-secondary" onclick="closeBookieForm()">Cancel</button>
+        <button class="btn btn-primary" onclick="saveBookieEntry()">Add Entry</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 </main>
 <div id="toast"></div>
 
@@ -882,7 +947,7 @@ async function initFirebase() {
     db = firebase.firestore(app);
 
     // Pre-load core keys in parallel
-    const coreKeys = ['roster','pts','scores','dots','fmt_ovr','hcaps'];
+    const coreKeys = ['roster','pts','scores','dots','fmt_ovr','hcaps','bookie'];
     await Promise.all(coreKeys.map(k => fbLoad(k)));
 
     document.getElementById('fb-status').textContent = '🟢 Connected';
@@ -1259,6 +1324,7 @@ function showTab(id) {
   if (id==='weekly')  { populateSel('pts-week-sel', SCORE_WKS); renderWeekly(); renderPtsHistory(); }
   if (id==='scores')  { populateIndivSel(); onScoreWeekChange(); renderScoreHistory(); }
   if (id==='teamscores') { initTeamScoresTab(); }
+  if (id==='bookie')  { renderBookie(); }
   if (id==='dots')    { populateDotsSel(); renderDotsInputs(); renderDotsTable(); }
   if (id==='hcp')     { initHcpTrackerSel(); renderHcpMerged(); }
   if (id==='updatehi'){ renderHIUpdate(); }
@@ -4089,6 +4155,161 @@ function toast(msg) {
   renderScoreHistory();
   renderDotsTable();
 })();
+
+// ═══════════════════════════════════════
+// BOOKIE CENTRAL
+// ═══════════════════════════════════════
+const getBookie   = () => load('bookie', {entries:[]});
+const saveBookie  = v  => save('bookie', v);
+
+function renderBookie() {
+  const data    = getBookie();
+  const entries = data.entries || [];
+  const showSettled = document.getElementById('bk-show-settled')?.checked;
+
+  // Show add button only for commissioner
+  const addBtn = document.getElementById('bk-add-btn');
+  if (addBtn) addBtn.style.display = isCommissioner ? '' : 'none';
+
+  // ── Net balances ──
+  const net = {}; // player → net dollars (positive = owed money, negative = owes money)
+  entries.filter(e => !e.settled).forEach(e => {
+    net[e.from] = (net[e.from] || 0) - Number(e.amount);
+    net[e.to]   = (net[e.to]   || 0) + Number(e.amount);
+  });
+
+  const balEl = document.getElementById('bk-balances');
+  const allPlayers = [...new Set([...PLAYERS, ...Object.keys(net)])].filter(p => net[p] !== undefined && net[p] !== 0);
+  if (allPlayers.length === 0) {
+    balEl.innerHTML = '<span style="color:var(--muted);font-size:13px">No outstanding balances</span>';
+  } else {
+    const sorted = [...allPlayers].sort((a,b) => net[a] - net[b]);
+    balEl.innerHTML = sorted.map(p => {
+      const v = net[p];
+      const isOwed = v > 0;
+      const bg  = isOwed ? '#d8f3dc' : '#fde8e8';
+      const col = isOwed ? 'var(--green)' : 'var(--red)';
+      const sign = isOwed ? '+' : '';
+      return `<div style="background:${bg};border-radius:8px;padding:8px 14px;display:flex;flex-direction:column;align-items:center;min-width:90px">
+        <div style="font-size:11px;font-weight:700;color:var(--mid);text-transform:uppercase;letter-spacing:.4px;margin-bottom:2px">${p.split(' ')[0]}</div>
+        <div style="font-size:18px;font-weight:700;color:${col}">${sign}$${Math.abs(v).toFixed(2).replace('.00','')}</div>
+        <div style="font-size:10px;color:var(--muted)">${isOwed ? 'is owed' : 'owes'}</div>
+      </div>`;
+    }).join('');
+  }
+
+  // ── Ledger ──
+  const visible = showSettled ? entries : entries.filter(e => !e.settled);
+  const ledEl = document.getElementById('bk-ledger');
+  if (visible.length === 0) {
+    ledEl.innerHTML = `<div style="color:var(--muted);font-size:13px;text-align:center;padding:20px 0">${showSettled ? 'No entries yet' : 'All settled up! 🎉'}</div>`;
+    return;
+  }
+
+  const sorted = [...visible].sort((a,b) => (b.ts||0) - (a.ts||0));
+  ledEl.innerHTML = `<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px">
+    <thead><tr style="border-bottom:2px solid #eee">
+      <th style="text-align:left;padding:6px 8px;color:var(--mid);font-size:11px;text-transform:uppercase;letter-spacing:.4px">From</th>
+      <th style="text-align:left;padding:6px 8px;color:var(--mid);font-size:11px;text-transform:uppercase;letter-spacing:.4px">To</th>
+      <th style="text-align:right;padding:6px 8px;color:var(--mid);font-size:11px;text-transform:uppercase;letter-spacing:.4px">Amt</th>
+      <th style="text-align:left;padding:6px 8px;color:var(--mid);font-size:11px;text-transform:uppercase;letter-spacing:.4px">Reason</th>
+      <th style="text-align:center;padding:6px 8px;color:var(--mid);font-size:11px;text-transform:uppercase;letter-spacing:.4px">Wk</th>
+      <th style="text-align:center;padding:6px 8px;color:var(--mid);font-size:11px;text-transform:uppercase;letter-spacing:.4px">Status</th>
+      ${isCommissioner ? '<th style="padding:6px 4px"></th>' : ''}
+    </tr></thead>
+    <tbody>
+      ${sorted.map(e => {
+        const settled = e.settled;
+        const rowStyle = settled ? 'opacity:.45' : '';
+        const amtColor = settled ? 'var(--muted)' : 'var(--red)';
+        return `<tr style="border-bottom:1px solid #f0f0f0;${rowStyle}">
+          <td style="padding:7px 8px;font-weight:600">${e.from}</td>
+          <td style="padding:7px 8px">${e.to}</td>
+          <td style="padding:7px 8px;text-align:right;font-weight:700;color:${amtColor}">$${Number(e.amount).toFixed(2).replace('.00','')}</td>
+          <td style="padding:7px 8px;color:var(--mid)">${e.reason || '—'}</td>
+          <td style="padding:7px 8px;text-align:center;color:var(--muted)">${e.week ? 'Wk '+e.week : '—'}</td>
+          <td style="padding:7px 8px;text-align:center">
+            ${settled
+              ? '<span style="font-size:11px;background:#d8f3dc;color:var(--green);border-radius:12px;padding:2px 8px;font-weight:700">Settled</span>'
+              : '<span style="font-size:11px;background:#fde8e8;color:var(--red);border-radius:12px;padding:2px 8px;font-weight:700">Owes</span>'}
+          </td>
+          ${isCommissioner ? `<td style="padding:7px 4px;text-align:right;white-space:nowrap">
+            ${!settled ? `<button onclick="settleBookieEntry('${e.id}')" style="font-size:11px;padding:3px 8px;border:1px solid var(--green);background:#d8f3dc;color:var(--green);border-radius:6px;cursor:pointer;font-weight:600;margin-right:4px">✓ Settle</button>` : ''}
+            <button onclick="deleteBookieEntry('${e.id}')" style="font-size:11px;padding:3px 8px;border:1px solid #ddd;background:#fff;color:var(--muted);border-radius:6px;cursor:pointer">✕</button>
+          </td>` : ''}
+        </tr>`;
+      }).join('')}
+    </tbody>
+  </table></div>`;
+}
+
+function openBookieForm() {
+  if (!requireAuth()) return;
+  // Populate player dropdowns
+  const players = PLAYERS;
+  ['bk-from','bk-to'].forEach(id => {
+    const sel = document.getElementById(id);
+    sel.innerHTML = players.map(p => `<option value="${p}">${p}</option>`).join('');
+  });
+  document.getElementById('bk-to').selectedIndex = 1;
+  // Populate week dropdown
+  const wkSel = document.getElementById('bk-week');
+  wkSel.innerHTML = '<option value="">—</option>' +
+    SCORE_WKS.map(w => { const s = SCHEDULE.find(x=>x.wk===w); return `<option value="${w}">Wk ${w} — ${s?.date||''}</option>`; }).join('');
+  document.getElementById('bk-amount').value = '1';
+  document.getElementById('bk-reason').value = '';
+  const wrap = document.getElementById('bk-form-wrap');
+  wrap.style.display = 'flex';
+}
+
+function closeBookieForm() {
+  document.getElementById('bk-form-wrap').style.display = 'none';
+}
+
+function saveBookieEntry() {
+  if (!requireAuth()) return;
+  const from   = document.getElementById('bk-from').value;
+  const to     = document.getElementById('bk-to').value;
+  const amount = parseFloat(document.getElementById('bk-amount').value);
+  const week   = document.getElementById('bk-week').value;
+  const reason = document.getElementById('bk-reason').value.trim();
+  if (from === to) { toast('⚠️ From and To must be different players'); return; }
+  if (!amount || amount <= 0) { toast('⚠️ Enter a valid amount'); return; }
+  const data = getBookie();
+  if (!data.entries) data.entries = [];
+  data.entries.push({
+    id: Date.now() + '_' + Math.random().toString(36).slice(2,7),
+    from, to, amount, reason,
+    week: week ? Number(week) : null,
+    settled: false,
+    ts: Date.now()
+  });
+  saveBookie(data);
+  closeBookieForm();
+  renderBookie();
+  toast(`💰 Entry added: ${from} owes ${to} $${amount}`);
+}
+
+function settleBookieEntry(id) {
+  if (!requireAuth()) return;
+  const data = getBookie();
+  const entry = (data.entries||[]).find(e => e.id === id);
+  if (!entry) return;
+  entry.settled = true;
+  entry.settledTs = Date.now();
+  saveBookie(data);
+  renderBookie();
+  toast(`✅ Settled: ${entry.from} → ${entry.to} $${entry.amount}`);
+}
+
+function deleteBookieEntry(id) {
+  if (!requireAuth()) return;
+  if (!confirm('Delete this entry?')) return;
+  const data = getBookie();
+  data.entries = (data.entries||[]).filter(e => e.id !== id);
+  saveBookie(data);
+  renderBookie();
+}
 
 </script>
 </body>
