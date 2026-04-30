@@ -1475,7 +1475,6 @@ function renderRoundHistory() {
       const nine = td.nine || 'front';
       const idxs = getHolesForNine(nine);
       Object.keys(td.scores || {}).forEach(p => {
-        if (merged[wk][p]?.gross != null) return;
         const saved = td.scores[p]?.holes || {};
         const hi    = td.scores[p]?.hiSnapshot ?? (load('hcaps',{})[p] ?? null);
         const st    = getStrokesFor(p, hi != null ? Number(hi) : null);
@@ -1489,7 +1488,13 @@ function renderRoundHistory() {
             net += nv; stableford += calcStablefordPts(nv, COURSE.par[i]); cnt++;
           }
         });
-        if (cnt > 0) merged[wk][p] = { gross, adjGross, net, stableford, nine, hiSnapshot: hi };
+        if (cnt === 0) return;
+        if (merged[wk][p]?.gross != null) {
+          // Player already has individual score data — just fill in missing stableford
+          if (merged[wk][p].stableford == null) merged[wk][p] = { ...merged[wk][p], stableford };
+        } else {
+          merged[wk][p] = { gross, adjGross, net, stableford, nine, hiSnapshot: hi };
+        }
       });
     }
   });
