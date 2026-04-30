@@ -803,6 +803,7 @@ const COMMISSIONER_PASS = '4635';
 let isCommissioner = false;
 let db = null;
 const CACHE = {};
+const GROSS_BUFFER = {}; // {wk: {playerName: {holes:{}, hiSnapshot}}} — flushed on "Save & Post Week"
 const COURSE = {
   par:  [5,4,5,4,4,3,4,3,3, 4,5,5,4,3,4,4,3,3],
   hdcp: [10,14,6,2,16,18,8,12,4, 17,7,9,1,15,5,13,11,3]
@@ -2286,6 +2287,36 @@ function renderScoreHistory() {
 const getTeamData    = wk => load('team_' + wk, {pairings:[], results:{}, bonus:{ctp:{},ld:{}}, perPlayer:{}});
 const saveTeamData   = (wk,v) => save('team_' + wk, v);
 
+function getTeamDataMerged(wk) {
+  const base = getTeamData(wk);
+  const buf = GROSS_BUFFER[wk];
+  if (!buf) return base;
+  const scores = {};
+  Object.entries(base.scores || {}).forEach(([pn, ps]) => {
+    scores[pn] = {holes: {...(ps.holes || {})}, hiSnapshot: ps.hiSnapshot};
+  });
+  Object.entries(buf).forEach(([pn, pbuf]) => {
+    if (!scores[pn]) scores[pn] = {holes: {}};
+    scores[pn].holes = {...pbuf.holes};
+    if (pbuf.hiSnapshot != null) scores[pn].hiSnapshot = pbuf.hiSnapshot;
+  });
+  return {...base, scores};
+}
+
+function flushGrossBuffer(wk) {
+  const buf = GROSS_BUFFER[wk];
+  if (!buf || !Object.keys(buf).length) return;
+  const data = getTeamData(wk);
+  if (!data.scores) data.scores = {};
+  Object.entries(buf).forEach(([pn, pbuf]) => {
+    if (!data.scores[pn]) data.scores[pn] = {holes: {}};
+    data.scores[pn].holes = {...pbuf.holes};
+    if (pbuf.hiSnapshot != null) data.scores[pn].hiSnapshot = pbuf.hiSnapshot;
+  });
+  saveTeamData(wk, data);
+  delete GROSS_BUFFER[wk];
+}
+
 function setTeamNine(nine) {
   const wk = Number(document.getElementById('ts-week-sel').value);
   const data = getTeamData(wk);
@@ -2670,7 +2701,7 @@ function renderTeamMatches(wk) {
   const fmt = getEffectiveFmt(wk);
   const isMP  = fmt.toLowerCase().includes('match play');
   const isSF  = fmt.toLowerCase().includes('stableford');
-  const data  = getTeamData(wk);
+  const data  = getTeamDataMerged(wk);
   const matches = data.pairings.length ? data.pairings : getAutoPairings(wk);
   const hcaps = getHandicaps();
   document.getElementById('ts-matches-title').textContent = isMP ? '⚔️ Match Play Results' : isSF ? '🏆 Best Ball Stableford' : '🏆 Best Ball Results';
@@ -2970,20 +3001,28 @@ function tsGrossKeydown(e, mi, tk, pid, hIdx, totalHoles, firstHoleIdx) {
 function onTeamGross(mi, tk, pid, playerName, hIdx, wk) {
   const el = document.getElementById(`ts_g_${mi}_${tk}_${pid}_${hIdx}`);
   if (!el) return;
-  const data = getTeamData(wk);
-  if (!data.scores) data.scores = {};
-  if (!data.scores[playerName]) data.scores[playerName] = {holes:{}};
-  // Snapshot HI on first score entry for this player this week
-  if (!data.scores[playerName].hiSnapshot) {
+  // --- write to in-memory buffer only; Firebase is updated by flushGrossBuffer ---
+  if (!GROSS_BUFFER[wk]) GROSS_BUFFER[wk] = {};
+  if (!GROSS_BUFFER[wk][playerName]) {
+    const base = getTeamData(wk);
+    GROSS_BUFFER[wk][playerName] = {
+      holes: {...(base.scores?.[playerName]?.holes || {})},
+      hiSnapshot: base.scores?.[playerName]?.hiSnapshot ?? null
+    };
+  }
+  const buf = GROSS_BUFFER[wk][playerName];
+  if (buf.hiSnapshot == null) {
     const hcaps = getHandicaps();
     const hi = hcaps[playerName] ?? HCP_DATA.find(h=>h.name===playerName)?.hi ?? null;
-    if (hi != null) data.scores[playerName].hiSnapshot = Number(hi);
+    if (hi != null) buf.hiSnapshot = Number(hi);
   }
   if (el.value !== '') {
-    data.scores[playerName].holes[String(hIdx)] = Number(el.value);
+    buf.holes[String(hIdx)] = Number(el.value);
   } else {
-    delete data.scores[playerName].holes[String(hIdx)];
+    delete buf.holes[String(hIdx)];
   }
+  // Use merged view for all DOM update computations
+  const data = getTeamDataMerged(wk);
   // Update gross marker
   const markerEl = document.getElementById(`ts_gm_${mi}_${tk}_${pid}_${hIdx}`);
   if (markerEl) markerEl.className = 'g-marker ' + (el.value ? grossMarkerCls(Number(el.value), COURSE.par[hIdx]) : '');
@@ -3057,7 +3096,7 @@ function onTeamGross(mi, tk, pid, playerName, hIdx, wk) {
       else{bbEl.style.color='var(--muted)';bbEl.style.background='#f0faf3';bbEl.style.borderRadius='4px';}
     });
   });
-  saveTeamData(wk, data);
+  // scores are buffered — no Firebase write here
 }
 
 // ── Bonuses ──
@@ -3130,6 +3169,7 @@ function adjTeamBonus(pid, type, delta, wk, playerName) {
 function saveTeamPoints() {
   if (!requireAuth()) return;
   const wk = Number(document.getElementById('ts-week-sel').value);
+  flushGrossBuffer(wk); // commit buffered gross scores to Firebase before computing points
   const data = getTeamData(wk);
   const matches = data.pairings.length ? data.pairings : getAutoPairings(wk);
   const bon = data.bonus || {};
@@ -3187,6 +3227,7 @@ function clearTeamWeek() {
   if (!requireAuth()) return;
   const wk = Number(document.getElementById('ts-week-sel').value);
   if (!confirm(`Clear all team data for Week ${wk}? This removes scores, pairings, results and any points saved for this week.`)) return;
+  delete GROSS_BUFFER[wk];
   saveTeamData(wk, {pairings:[], results:{}, bonus:{ctp:{},ld:{}}, perPlayer:{}, scores:{}});
   const pts = getPts();
   delete pts[wk]; delete pts[String(wk)];
