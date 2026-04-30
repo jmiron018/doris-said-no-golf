@@ -4313,15 +4313,18 @@ function renderBookie() {
       });
     }
 
-    const tdBase = 'padding:7px 10px;text-align:center;font-size:13px;border-bottom:1px solid #f0f0f0';
+    const thLeft  = thStyle + ';text-align:left';
+    const thCtr   = thStyle + ';text-align:center';
+    const tdBase  = 'padding:7px 10px;text-align:center;font-size:13px;border-bottom:1px solid #f0f0f0';
+    const tdLeft  = 'padding:7px 10px;text-align:left;font-weight:700;font-size:13px;border-bottom:1px solid #f0f0f0;white-space:nowrap';
     let html = `<table style="width:100%;border-collapse:collapse;font-size:13px">
       <thead><tr style="border-bottom:2px solid #eee">
-        <th onclick="bkSortMat('total')" style="${thStyle}">Owes ↓ / Wins →${arrow('total')}</th>
-        ${cols.map(p => `<th onclick="bkSortMat('${p.replace(/'/g,"\\'")}')" style="${thStyle}">${p.split(' ')[0]}${arrow(p)}</th>`).join('')}
+        <th onclick="bkSortMat('total')" style="${thLeft}">Owes ↓ / Wins →${arrow('total')}</th>
+        ${cols.map(p => `<th onclick="bkSortMat('${p.replace(/'/g,"\\'")}')" style="${thCtr}">${p.split(' ')[0]}${arrow(p)}</th>`).join('')}
       </tr></thead><tbody>`;
     rows.forEach(r => {
       html += `<tr>
-        <td style="padding:7px 10px;font-weight:700;font-size:13px;border-bottom:1px solid #f0f0f0;white-space:nowrap">${r.split(' ')[0]}</td>
+        <td style="${tdLeft}">${r.split(' ')[0]}</td>
         ${cols.map(c => {
           if (r === c) return `<td style="${tdBase};color:#ddd">—</td>`;
           const v = owes[r]?.[c] || 0;
